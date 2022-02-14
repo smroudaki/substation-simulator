@@ -1,0 +1,22 @@
+﻿@model ElectricalEmulator.Application.ViewModels.Classes.RegisterViewModel
+
+<form asp-action="Register" method="post" id="modal-form">
+    <input asp-for="ClassGuid" type="hidden" />
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-group">
+                <label asp-for="UserId"></label>
+                <select asp-for="UserId" asp-items="ViewBag.Users" class="form-control select2"></select>
+                <span asp-validation-for="UserId" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">ثبت</button>
+</form>
+
+<script>
+    $('.select2').select2()
+</script>
+
+<partial name="_ValidationScriptsPartial" />

@@ -1,0 +1,102 @@
+﻿@using System.Security.Claims
+
+<!-- Left navbar links -->
+<ul class="navbar-nav">
+    <li class="nav-item">
+        <a class="nav-link" data-widget="pushmenu" href="#"><i class="fa fa-bars"></i></a>
+    </li>
+    @{
+        var routeData = ViewContext.RouteData;
+
+        var routeAction = routeData.Values["action"].ToString();
+        var routeController = routeData.Values["controller"].ToString();
+
+        if ((routeController.Equals("UserPost") || routeController.Equals("UserClassPost")) &&
+            routeAction.Equals("Index") &&
+            User.FindFirst(ClaimTypes.Role).Value.Equals("Student"))
+        {
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="#" class="nav-link">امتیاز <span id="score">-</span></a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="#" class="nav-link">زمان باقی مانده <span id="timeRemaining">-</span> دقیقه</a>
+            </li>
+        }
+    }
+</ul>
+
+<!-- Right navbar links -->
+<ul class="navbar-nav mr-auto">
+    @if ((routeController.Equals("UserPost") || routeController.Equals("UserClassPost")) &&
+       routeAction.Equals("Index"))
+    {
+        <li class="nav-item">
+            <a class="nav-link" data-toggle='tooltip' data-placement='auto' title='فعالیت ها / اطلاع رسانی ها' href="javascript:void(0)" onclick="showInfo()">
+                <i class="fa fa-info"></i>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-toggle='tooltip' data-placement='auto' title='گزارش ها' href="javascript:void(0)" onclick="showReports()">
+                <i class="fa fa-line-chart"></i>
+            </a>
+        </li>
+    }
+    <!-- Messages Dropdown Menu -->
+    <!--<li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#">
+            <i class="fa fa-comments-o"></i>
+            <span class="badge badge-danger navbar-badge">3</span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-left">
+            <a href="#" class="dropdown-item">-->
+    <!-- Message Start -->
+    <!--<div class="media">
+        <img src="~/dist/img/user1-128x128.jpg" alt="User Avatar" class="img-size-50 ml-3 img-circle">
+        <div class="media-body">
+            <h3 class="dropdown-item-title">
+                سیدمهدی رودکی
+                <span class="float-left text-sm text-danger"><i class="fa fa-star"></i></span>
+            </h3>
+            <p class="text-sm">با من تماس بگیر لطفا...</p>
+            <p class="text-sm text-muted"><i class="fa fa-clock-o mr-1"></i> 4 ساعت قبل</p>
+        </div>
+    </div>-->
+    <!-- Message End -->
+    <!--</a>
+    <div class="dropdown-divider"></div>
+    <a href="#" class="dropdown-item">-->
+    <!-- Message Start -->
+    <!--<div class="media">
+        <img src="~/dist/img/user8-128x128.jpg" alt="User Avatar" class="img-size-50 img-circle ml-3">
+        <div class="media-body">
+            <h3 class="dropdown-item-title">
+                علی پارسبین
+                <span class="float-left text-sm text-muted"><i class="fa fa-star"></i></span>
+            </h3>
+            <p class="text-sm">من پیامتو دریافت کردم</p>
+            <p class="text-sm text-muted"><i class="fa fa-clock-o mr-1"></i> 4 ساعت قبل</p>
+        </div>
+    </div>-->
+    <!-- Message End -->
+    <!--</a>
+    <div class="dropdown-divider"></div>
+    <a href="#" class="dropdown-item">-->
+    <!-- Message Start -->
+    <!--<div class="media">
+        <img src="~/dist/img/user3-128x128.jpg" alt="User Avatar" class="img-size-50 img-circle ml-3">
+        <div class="media-body">
+            <h3 class="dropdown-item-title">
+                ارشیا اموری
+                <span class="float-left text-sm text-warning"><i class="fa fa-star"></i></span>
+            </h3>
+            <p class="text-sm">پروژه اتون عالی بود مرسی واقعا</p>
+            <p class="text-sm text-muted"><i class="fa fa-clock-o mr-1"></i>4 ساعت قبل</p>
+        </div>
+    </div>-->
+    <!-- Message End -->
+    <!--</a>
+            <div class="dropdown-divider"></div>
+            <a href="#" class="dropdown-item dropdown-footer">مشاهده همه پیام‌ها</a>
+        </div>
+    </li>-->
+</ul>

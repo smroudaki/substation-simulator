@@ -1,0 +1,18 @@
+﻿@model ElectricalEmulator.Application.ViewModels.Accounts.EditProfileViewModel
+
+<form asp-action="EditProfile" method="post" id="modal-form">
+    <div class="form-group">
+        <label asp-for="FirstName" class="col-form-label"></label>
+        <input asp-for="FirstName" class="form-control">
+        <span asp-validation-for="FirstName" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="LastName" class="col-form-label"></label>
+        <input asp-for="LastName" class="form-control">
+        <span asp-validation-for="LastName" class="text-danger"></span>
+    </div>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">ثبت</button>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

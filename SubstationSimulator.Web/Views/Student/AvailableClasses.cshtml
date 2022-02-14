@@ -1,0 +1,95 @@
+﻿@using System.Security.Claims
+
+@model IEnumerable<ElectricalEmulator.Application.ViewModels.Classes.ClassViewModel>
+
+@{
+    ViewData["Title"] = "لیست کلاس ها";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section PluginStyles {
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/plugins/datatables/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="~/dist/css/custom-datatables.css">
+}
+
+@section PluginScripts {
+    <!-- DataTables -->
+    <script src="~/plugins/datatables/jquery.dataTables.js"></script>
+    <script src="~/plugins/datatables/dataTables.bootstrap4.js"></script>
+    <script src="~/dist/js/custom-datatables.js"></script>
+}
+
+@section Modals {
+    <script>
+        sendRequest = classGuid => {
+            $.get('@Url.Action("SendRequest", "Class")', { classGuid }, data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('ارسال درخواست ثبت نام')
+                $('.modal-body').html(data)
+            })
+        }
+    </script>
+}
+
+<!-- Content Header (Page header) -->
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Dashboard")">داشبورد</a></li>
+                    <li class="breadcrumb-item active">@ViewData["Title"]</li>
+                </ol>
+            </div>
+        </div>
+    </div><!-- /.container-fluid -->
+</section>
+
+<!-- Main content -->
+<section class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <table id="datatable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>@Html.DisplayNameFor(model => model.Title)</th>
+                                <th>@Html.DisplayNameFor(model => model.Description)</th>
+                                <th>@Html.DisplayNameFor(model => model.User)</th>
+                                <th>کنترل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var counter = 1;
+
+                                foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>@(counter++)</td>
+                                        <td>@item.Title</td>
+                                        <td>@item.Description</td>
+                                        <td>@(item.User.FirstName + " " + item.User.LastName)</td>
+                                        <td>
+                                            <a href="javascript:void(0)" onclick="sendRequest('@item.ClassGuid')" class="btn btn-primary btn-sm control" data-toggle="tooltip" data-placement="auto" title="ارسال درخواست ثبت نام">
+                                                <i class="fa fa-send"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+</section>
+<!-- /.content -->

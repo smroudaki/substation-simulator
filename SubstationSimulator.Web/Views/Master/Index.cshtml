@@ -1,0 +1,124 @@
+﻿@model IEnumerable<ElectricalEmulator.Application.ViewModels.Users.UserViewModel>
+
+@{
+    ViewData["Title"] = "لیست اساتید";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section PluginStyles {
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/plugins/datatables/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="~/dist/css/custom-datatables.css">
+}
+
+@section PluginScripts {
+    <!-- DataTables -->
+    <script src="~/plugins/datatables/jquery.dataTables.js"></script>
+    <script src="~/plugins/datatables/dataTables.bootstrap4.js"></script>
+    <script src="~/dist/js/custom-datatables.js"></script>
+}
+
+@section Modals {
+    <script>
+        createMaster = () => {
+            $.get('@Url.Action("Create", "Master")', data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('افزودن استاد')
+                $('.modal-body').html(data)
+            })
+        }
+        editMaster = userId => {
+            $.get('/Master/Edit?userId=' + userId, data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('ویرایش استاد')
+                $('.modal-body').html(data)
+            })
+        }
+        deleteMaster = userId => {
+            $.get('/Master/Delete?userId=' + userId, data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('حذف استاد')
+                $('.modal-body').html(data)
+            })
+        }
+    </script>
+}
+
+<!-- Content Header (Page header) -->
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Dashboard")">داشبورد</a></li>
+                    <li class="breadcrumb-item active">@ViewData["Title"]</li>
+                </ol>
+            </div>
+            <div class="col-sm-6">
+                <div class="pull-left" data-toggle='tooltip' data-placement='auto' title='افزودن استاد'>
+                    <a href="javascript:void(0)" onclick="createMaster()">
+                        <i class="fa fa-plus navigation-btn-icon"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div><!-- /.container-fluid -->
+</section>
+
+<!-- Main content -->
+<section class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <table id="datatable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>@Html.DisplayNameFor(model => model.FirstName)</th>
+                                <th>@Html.DisplayNameFor(model => model.LastName)</th>
+                                <th>@Html.DisplayNameFor(model => model.PhoneNumber)</th>
+                                <th>@Html.DisplayNameFor(model => model.CreationDate)</th>
+                                <th>@Html.DisplayNameFor(model => model.ModifiedDate)</th>
+                                <th>کنترل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var counter = 1;
+
+                                foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>@(counter++)</td>
+                                        <td>@item.FirstName</td>
+                                        <td>@item.LastName</td>
+                                        <td>@item.PhoneNumber</td>
+                                        <td>@item.CreationDate</td>
+                                        <td>@item.ModifiedDate</td>
+                                        <td>
+                                            <a href="@Url.Action("Classes", "Master", new { userId = item.Id })" class="btn btn-primary btn-sm control" data-toggle="tooltip" data-placement="auto" title="لیست کلاس ها">
+                                                <i class="fa fa-book"></i>
+                                            </a>
+                                            <a href="javascript:void(0)" onclick="editMaster('@item.Id')" class="btn btn-sm btn-warning control" data-toggle="tooltip" data-placement="auto" title="ویرایش">
+                                                <i class="fa fa-pencil"></i>
+                                            </a>
+                                            <a href="javascript:void(0)" onclick="deleteMaster('@item.Id')" class="btn btn-sm btn-danger control" data-toggle="tooltip" data-placement="auto" title="حذف">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+</section>
+<!-- /.content -->

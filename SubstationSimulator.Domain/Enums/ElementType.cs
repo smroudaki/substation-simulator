@@ -1,0 +1,32 @@
+﻿namespace ElectricalEmulator.Domain.Enums
+{
+    public enum ElementType
+    {
+        LineType1,
+        LineType2,
+        LineType3,
+        LineType4,
+        BridgeLine,
+        EntranceLine,
+        ExitLine,
+        BusLine,
+        Disconnector,
+        BreakerType1,
+        BreakerType2,
+        TransType1,
+        TransType2,
+        TransPart,
+        Generator,
+        Reactor,
+        Earth,
+        OpenLine,
+        CloseLine,
+        Not,
+        And,
+        Or,
+        Xor,
+        Nand,
+        Nor,
+        Xnor
+    }
+}

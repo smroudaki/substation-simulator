@@ -1,0 +1,144 @@
+﻿@using ElectricalEmulator.Domain.Enums
+@using System.Security.Claims
+
+@{
+    ViewData["Title"] = "صفحه اصلی";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Content Header (Page header) -->
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            @*<div class="col-sm-6">
+                    <h1>صفحه اصلی</h1>
+                </div>*@
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="#">داشبورد</a></li>
+                    <li class="breadcrumb-item active">صفحه اصلی</li>
+                </ol>
+            </div>
+        </div>
+    </div><!-- /.container-fluid -->
+</section>
+
+<!-- Main content -->
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            @{
+                var currentUserRole = User.FindFirstValue(ClaimTypes.Role);
+
+                if (currentUserRole.Equals(UserRole.Admin.ToString()))
+                {
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3>@ViewBag.ClassesCount</h3>
+                                <p>تعداد کلاس ها</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-book"></i>
+                            </div>
+                            <a asp-controller="Class" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-success">
+                            <div class="inner">
+                                <h3>@ViewBag.PostsCount</h3>
+                                <p>تعداد پست ها</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-plug"></i>
+                            </div>
+                            <a asp-controller="Post" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-warning">
+                            <div class="inner">
+                                <h3>@ViewBag.MastersCount</h3>
+                                <p>تعداد اساتید</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-user"></i>
+                            </div>
+                            <a asp-controller="Master" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-danger">
+                            <div class="inner">
+                                <h3>@ViewBag.StudentsCount</h3>
+                                <p>تعداد دانشجویان</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-graduation-cap"></i>
+                            </div>
+                            <a asp-controller="Student" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                }
+                else if (currentUserRole.Equals(UserRole.Master.ToString()))
+                {
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3>@ViewBag.MyClassesCount</h3>
+                                <p>تعداد کلاس های من</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-book"></i>
+                            </div>
+                            <a asp-controller="Master" asp-action="MyClasses" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                }
+                else
+                {
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-info">
+                            <div class="inner">
+                                <h3>@ViewBag.MyClassesCount</h3>
+                                <p>تعداد کلاس های من</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-book"></i>
+                            </div>
+                            <a asp-controller="Student" asp-action="MyClasses" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                    <div class="col-lg-3 col-6">
+                        <!-- small box -->
+                        <div class="small-box bg-success">
+                            <div class="inner">
+                                <h3>@ViewBag.MyRequestsCount</h3>
+                                <p>تعداد درخواست های من</p>
+                            </div>
+                            <div class="icon">
+                                <i class="fa fa-send"></i>
+                            </div>
+                            <a asp-controller="Student" asp-action="MyClasses" class="small-box-footer">اطلاعات بیشتر <i class="fa fa-arrow-circle-left"></i></a>
+                        </div>
+                    </div>
+                    <!-- ./col -->
+                }
+            }
+        </div>
+    </div>
+</section>
+<!-- /.content -->

@@ -1,0 +1,9 @@
+﻿@using ElectricalEmulator.Application.Common
+
+<form asp-action="Unregister" method="post" id="modal-form">
+    <p>@Constants.ClassUnregisterQuestion</p>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">حذف</button>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

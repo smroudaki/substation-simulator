@@ -1,0 +1,214 @@
+﻿@using ElectricalEmulator.Domain.Enums;
+@using ElectricalEmulator.Application.Common;
+@model ElectricalEmulator.Application.ViewModels.Interlocks.InterlocksJsonResultViewModel
+
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' id='interlocks'>
+    <g class="scene">
+        @foreach (var item in Model.Interlocks)
+        {
+            switch (item.TypeCode)
+            {
+                case ElementType.LineType1:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="#000000">
+                        <path d="M 40.000, -0.000 L 60.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 100.000 L 40.000, -0.000 L 40.000, -0.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType2:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="#000000">
+                        <path d="M 40.000, 100.000 L 40.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 L 40.000, 40.000 L 60.000, 40.000 L 60.000, 60.000 L 60.000, 100.000 L 40.000, 100.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType3:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="#000000">
+                        <path d="M 40.000, 100.000 L 40.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 L 40.000, 40.000 L 40.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 40.000, 100.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType4:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)" fill-rule="evenodd" fill="#000000">
+                        <path d="M 100.000, 60.000 L 60.000, 60.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 60.000 L -0.000, 60.000 L -0.000, 40.000 L 40.000, 40.000 L 40.000, -0.000 L 60.000, -0.000 L 60.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.OpenLine:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">OPEN</text>
+                    </g>
+                    break;
+
+                case ElementType.CloseLine:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">CLOSE</text>
+                    </g>
+                    break;
+
+                case ElementType.Not:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">NOT</text>
+                    </g>
+                    break;
+
+                case ElementType.And:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">AND</text>
+                    </g>
+                    break;
+
+                case ElementType.Or:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">OR</text>
+                    </g>
+                    break;
+
+                case ElementType.Xor:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">XOR</text>
+                    </g>
+                    break;
+
+                case ElementType.Nand:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">NAND</text>
+                    </g>
+                    break;
+
+                case ElementType.Nor:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">NOR</text>
+                    </g>
+                    break;
+
+                case ElementType.Xnor:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@Constants.elementsHalfHeight" dominant-baseline="middle" text-anchor="middle" font-size="12pt">XNORs</text>
+                    </g>
+                    break;
+
+                case ElementType.EntranceLine:
+                case ElementType.ExitLine:
+                case ElementType.BusLine:
+                case ElementType.Disconnector:
+                case ElementType.BreakerType1:
+                case ElementType.BreakerType2:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="rgba(0, 255, 0, 0.3)" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="rgba(0, 255, 0, 0.1)"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="@Constants.elementsHalfWidth" y="@(Constants.elementsHalfHeight - 12)" dominant-baseline="middle" text-anchor="middle" font-size="12pt">@item.Name</text>
+                        @if (item.Status)
+                        {
+                            @:<text x="@Constants.elementsHalfWidth" y="@(Constants.elementsHalfHeight + 10)" dominant-baseline="middle" text-anchor="middle" font-size="10pt" fill="green">CLOSE</text>
+
+                        }
+                        else
+                        {
+                            @:<text x="@Constants.elementsHalfWidth" y="@(Constants.elementsHalfHeight + 10)" dominant-baseline="middle" text-anchor="middle" font-size="10pt" fill="red">OPEN</text>
+                        }
+                    </g>
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    </g>
+</svg>
+<script>
+    svgPanZoom('#interlocks', {
+        zoomScaleSensitivity: 0.5,
+        //minZoom: 0.5,
+        //maxZoom: 1,
+        beforePan: function (oldPan, newPan) {
+            let stopHorizontal = false,
+                stopVertical = false,
+                gutterWidth = 0,
+                gutterHeight = 0,
+                // Computed variables
+                sizes = this.getSizes(),
+                leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth,
+                rightLimit = sizes.width - gutterWidth - (sizes.viewBox.x * sizes.realZoom),
+                topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight,
+                bottomLimit = sizes.height - gutterHeight - (sizes.viewBox.y * sizes.realZoom)
+
+            customPan = {}
+            customPan.x = Math.max(leftLimit, Math.min(rightLimit, newPan.x))
+            customPan.y = Math.max(topLimit, Math.min(bottomLimit, newPan.y))
+
+            return customPan;
+        },
+        customEventsHandler: {
+            haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
+            init: function (options) {
+                let instance = options.instance,
+                    initialScale = 1,
+                    pannedX = 0,
+                    pannedY = 0
+
+                // Init Hammer
+                // Listen only for pointer and touch events
+                this.hammer = Hammer(options.svgElement, {
+                    inputClass: Hammer.SUPPORT_POINTER_EVENTS ? Hammer.PointerEventInput : Hammer.TouchInput
+                })
+
+                // Enable pinch
+                this.hammer.get('pinch').set({ enable: true })
+
+                // Handle double tap
+                this.hammer.on('doubletap', function (ev) {
+                    instance.zoomIn()
+                })
+
+                // Handle pan
+                this.hammer.on('panstart panmove', function (ev) {
+                    // On pan start reset panned variables
+                    if (ev.type === 'panstart') {
+                        pannedX = 0
+                        pannedY = 0
+                    }
+
+                    // Pan only the difference
+                    instance.panBy({ x: ev.deltaX - pannedX, y: ev.deltaY - pannedY })
+                    pannedX = ev.deltaX
+                    pannedY = ev.deltaY
+                })
+
+                // Handle pinch
+                this.hammer.on('pinchstart pinchmove', function (ev) {
+                    // On pinch start remember initial zoom
+                    if (ev.type === 'pinchstart') {
+                        initialScale = instance.getZoom()
+                        instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y })
+                    }
+
+                    instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y })
+                })
+
+                // Prevent moving the page on some devices when panning over SVG
+                options.svgElement.addEventListener('touchmove', function (e) { e.preventDefault() })
+            },
+
+            destroy: function () {
+                this.hammer.destroy()
+            }
+        }
+    })
+</script>

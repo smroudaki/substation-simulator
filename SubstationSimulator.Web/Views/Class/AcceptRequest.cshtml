@@ -1,0 +1,9 @@
+﻿@using ElectricalEmulator.Application.Common
+
+<form asp-action="AcceptRequest" method="post" id="modal-form">
+    <p>@Constants.UserClassAcceptRequestQuestion</p>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">ثبت</button>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

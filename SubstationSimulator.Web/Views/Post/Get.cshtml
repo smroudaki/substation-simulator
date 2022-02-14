@@ -1,0 +1,769 @@
+﻿
+@using ElectricalEmulator.Domain.Enums;
+@using ElectricalEmulator.Application.Common;
+
+@model ElectricalEmulator.Application.ViewModels.Posts.PostJsonResultViewModel
+
+@{
+    ViewData["Title"] = "مشاهده پست";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Styles {
+    <style type="text/css" media="screen">
+        body, html {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+            svg g:not(.scene) {
+                transition: all 0.25s;
+            }
+
+            svg#postElements {
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+        nav,
+        footer {
+            z-index: 8;
+        }
+
+        footer {
+            background: #fff;
+        }
+
+        .title {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            z-index: 1;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/dist/js/svg-pan-zoom.min.js"></script>
+    <script src="~/dist/js/hammer.js"></script>
+    <script>
+        $(document).ready(function () {
+            svgPanZoom('#postElements', {
+                zoomScaleSensitivity: 0.5,
+                //minZoom: 0.5,
+                //maxZoom: 1,
+                beforePan: function (oldPan, newPan) {
+                    let stopHorizontal = false,
+                        stopVertical = false,
+                        gutterWidth = 0,
+                        gutterHeight = 0,
+                        // Computed variables
+                        sizes = this.getSizes(),
+                        leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth,
+                        rightLimit = sizes.width - gutterWidth - (sizes.viewBox.x * sizes.realZoom),
+                        topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight,
+                        bottomLimit = sizes.height - gutterHeight - (sizes.viewBox.y * sizes.realZoom)
+
+                    customPan = {}
+                    customPan.x = Math.max(leftLimit, Math.min(rightLimit, newPan.x))
+                    customPan.y = Math.max(topLimit, Math.min(bottomLimit, newPan.y))
+
+                    return customPan;
+                },
+                customEventsHandler: {
+                    haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
+                    init: function (options) {
+                        let instance = options.instance,
+                            initialScale = 1,
+                            pannedX = 0,
+                            pannedY = 0
+
+                        // Init Hammer
+                        // Listen only for pointer and touch events
+                        this.hammer = Hammer(options.svgElement, {
+                            inputClass: Hammer.SUPPORT_POINTER_EVENTS ? Hammer.PointerEventInput : Hammer.TouchInput
+                        })
+
+                        // Enable pinch
+                        this.hammer.get('pinch').set({ enable: true })
+
+                        // Handle double tap
+                        this.hammer.on('doubletap', function (ev) {
+                            instance.zoomIn()
+                        })
+
+                        // Handle pan
+                        this.hammer.on('panstart panmove', function (ev) {
+                            // On pan start reset panned variables
+                            if (ev.type === 'panstart') {
+                                pannedX = 0
+                                pannedY = 0
+                            }
+
+                            // Pan only the difference
+                            instance.panBy({ x: ev.deltaX - pannedX, y: ev.deltaY - pannedY })
+                            pannedX = ev.deltaX
+                            pannedY = ev.deltaY
+                        })
+
+                        // Handle pinch
+                        this.hammer.on('pinchstart pinchmove', function (ev) {
+                            // On pinch start remember initial zoom
+                            if (ev.type === 'pinchstart') {
+                                initialScale = instance.getZoom()
+                                instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y })
+                            }
+
+                            instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y })
+                        })
+
+                        // Prevent moving the page on some devices when panning over SVG
+                        options.svgElement.addEventListener('touchmove', function (e) { e.preventDefault(); });
+                    },
+
+                    destroy: function () {
+                        this.hammer.destroy()
+                    }
+                }
+            });
+        })
+    </script>
+    <script>
+        const elementType = {
+            LineType1: 0,
+            LineType2: 1,
+            LineType3: 2,
+            LineType4: 3,
+            BridgeLine: 4,
+            EntranceLine: 5,
+            ExitLine: 6,
+            BusLine: 7,
+            Disconnector: 8,
+            BreakerType1: 9,
+            BreakerType2: 10,
+            TransType1: 11,
+            TransType2: 12,
+            TransPart: 13,
+            Generator: 14,
+            Reactor: 15,
+            Earth: 16,
+            OpenLine: 17,
+            CloseLine: 18,
+            Not: 19,
+            And: 20,
+            Or: 21,
+            Xor: 22,
+            Nand: 23,
+            Nor: 24,
+            Xnor: 25
+        }
+
+        const color = {
+            Black: 0,
+            Yellow: 1,
+            Orange: 2,
+            Blue: 3,
+            Green: 4,
+            Red: 5,
+            Purple: 6
+        }
+
+        const voltagesLightColor = {
+            [color.Black]: '#4B4B4B',
+            [color.Yellow]: '#FFFF86',
+            [color.Orange]: '#FFB15E',
+            [color.Blue]: '#3D78FF',
+            [color.Green]: '#88FF5C',
+            [color.Red]: '#FF6565',
+            [color.Purple]: '#FF76FF'
+        }
+
+        const voltagesDarkColor = {
+            [color.Black]: '#000000',
+            [color.Yellow]: '#FFF700',
+            [color.Orange]: '#C24100',
+            [color.Blue]: '#0000FF',
+            [color.Green]: '#00FF00',
+            [color.Red]: '#FF0000',
+            [color.Purple]: '#FF00FF'
+        }
+
+        const orientation = {
+            Up: 0,
+            Right: 1,
+            Down: 2,
+            Left: 3
+        }
+
+        let postRawValue
+
+        findRoutes = currentLocation => {
+            const routes = []
+
+            const topLoc = moveUp(currentLocation)
+            const topEl = getElement(topLoc)
+
+            const rightLoc = moveRight(currentLocation)
+            const rightEl = getElement(rightLoc)
+
+            const downLoc = moveDown(currentLocation)
+            const downEl = getElement(downLoc)
+
+            const leftLoc = moveLeft(currentLocation)
+            const leftEl = getElement(leftLoc)
+
+            if (topEl && test2(topEl) && !topEl.status && !routes.includes(orientation.Top)) {
+                if ((rightEl && rightEl.status) || (downEl && downEl.status) || (leftEl && leftEl.status)) {
+                    const route = {
+                        'orientation': orientation.Top,
+                        'element': topEl
+                    }
+                    routes.push(route)
+                }
+            }
+
+            if (rightEl && test2(rightEl) && !rightEl.status && !routes.includes(orientation.Right)) {
+                if ((downEl && downEl.status) || (leftEl && leftEl.status) || (topEl && topEl.status)) {
+                    const route = {
+                        'orientation': orientation.Right,
+                        'element': rightEl
+                    }
+                    routes.push(route)
+                }
+            }
+
+            if (downEl && test2(downEl) && !downEl.status && !routes.includes(orientation.Down)) {
+                if ((leftEl && leftEl.status) || (topEl && topEl.status) || (rightEl && rightEl.status)) {
+                    const route = {
+                        'orientation': orientation.Down,
+                        'element': downEl
+                    }
+                    routes.push(route)
+                }
+            }
+
+            if (leftEl && test2(leftEl) && !leftEl.status && !routes.includes(orientation.Left)) {
+                if ((topEl && topEl.status) || (rightEl && rightEl.status) || (downEl && downEl.status)) {
+                    const route = {
+                        'orientation': orientation.Left,
+                        'element': leftEl
+                    }
+                    routes.push(route)
+                }
+            }
+
+            return routes
+        }
+
+        test2 = element => {
+            if (element.typeCode == elementType.LineType1 ||
+                element.typeCode == elementType.LineType2 ||
+                element.typeCode == elementType.LineType3 ||
+                element.typeCode == elementType.LineType4 ||
+                element.typeCode == elementType.BridgeLine ||
+                element.typeCode == elementType.EntranceLine ||
+                element.typeCode == elementType.ExitLine ||
+                element.typeCode == elementType.BusLine ||
+                element.typeCode == elementType.Reactor) {
+                return true
+            }
+
+            return false
+        }
+
+        test = currentLocation => {
+            const routes = findRoutes(currentLocation)
+            routes.forEach(route => {
+                toggleStatus(route.element)
+                test([route.element.locX * @Constants.elementsWidth, route.element.locY * @Constants.elementsHeight])
+            })
+        }
+
+        test3 = () => {
+            $.ajax({
+                method: "POST",
+                url: "http://localhost:3877/api/Post",
+                dataType: "json",
+                contentType: "application/json",
+                data: postRawValue
+            }).done((data) => {
+
+            })
+        }
+
+        runManeuver = (locX, locY) => {
+            if (confirm('آیا از انجام مانور مطمئن هستید؟')) {
+                $.get('http://localhost:3877/api/Post/@TempData["PostGuid"]', function (post) {
+                    postRawValue = post.rawValue
+
+
+                    //debugger
+
+                    const currLoc = [locX, locY]
+                    const el = getElement(currLoc)
+                    if (el/* && !el.status*/) {
+                        toggleStatus(el)
+                    } else {
+                        console.log('Post not valid!');
+                        return
+                    }
+
+                    test(currLoc)
+                    test3()
+
+
+                    //tempLocation = moveUp(currentLocation)
+                    //element = getElement(tempLocation)
+                    //if (element) {
+                    //    if (!element.status) {
+                    //        toggleStatus(element)
+                    //        navigate(tempLocation, orientation.Up)
+                    //    } else {
+
+                    //    }
+                    //}
+
+                    //tempLocation = moveRight(currentLocation)
+                    //element = getElement(tempLocation)
+                    //if (element) {
+                    //    if (!element.status) {
+                    //        toggleStatus(element)
+                    //        navigate(tempLocation, orientation.Right)
+                    //    } else {
+
+                    //    }
+                    //}
+
+                    //tempLocation = moveDown(currentLocation)
+                    //element = getElement(tempLocation)
+                    //if (element) {
+                    //    if (!element.status) {
+                    //        toggleStatus(element)
+                    //        navigate(tempLocation, orientation.Down)
+                    //    } else {
+
+                    //    }
+                    //}
+
+                    //tempLocation = moveLeft(currentLocation)
+                    //element = getElement(tempLocation)
+                    //if (element) {
+                    //    if (!element.status) {
+                    //        toggleStatus(element)
+                    //        navigate(tempLocation, orientation.Left)
+                    //    } else {
+
+                    //    }
+                    //}
+
+                    //updatePost()
+                })
+            }
+        }
+
+        navigate = (location, previousElementOrientation) => {
+            let element
+            let tempLocation
+
+            if (previousElementOrientation != orientation.Down) {
+                tempLocation = moveUp(location)
+                element = getElement(tempLocation)
+                if (element) {
+                    if (!element.status) {
+                        toggleStatus(element)
+                        navigate(tempLocation, orientation.Up)
+                    } else {
+
+                    }
+                }
+            }
+
+            if (previousElementOrientation != orientation.Left) {
+                tempLocation = moveRight(location)
+                element = getElement(tempLocation)
+                if (element) {
+                    if (!element.status) {
+                        toggleStatus(element)
+                        navigate(tempLocation, orientation.Right)
+                    } else {
+
+                    }
+                }
+            }
+
+            if (previousElementOrientation != orientation.Up) {
+                tempLocation = moveDown(location)
+                element = getElement(tempLocation)
+                if (element) {
+                    if (!element.status) {
+                        toggleStatus(element)
+                        navigate(tempLocation, orientation.Down)
+                    } else {
+
+                    }
+                }
+            }
+
+            if (previousElementOrientation != orientation.Right) {
+                tempLocation = moveLeft(location)
+                element = getElement(tempLocation)
+                if (element) {
+                    if (!element.status) {
+                        toggleStatus(element)
+                        navigate(tempLocation, orientation.Left)
+                    } else {
+
+                    }
+                }
+            }
+        }
+
+        updatePost = () => {
+            $.ajax({
+                method: "POST",
+                url: "http://localhost:3877/api/Post",
+                dataType: "json",
+                contentType: "application/json",
+                data: postRawValue
+            }).done((data) => {
+
+            })
+        }
+
+        toggleStatus = element => {
+            colorElement(element)
+            updateVoltage(element)
+        }
+
+        colorElement = element => {
+            let className = (element.locX * @Constants.elementsWidth) + '-' + (element.locY * @Constants.elementsHeight)
+            let selector
+
+            switch (element.typeCode) {
+                case elementType.LineType1:
+                case elementType.LineType2:
+                case elementType.LineType3:
+                case elementType.LineType4:
+                case elementType.BridgeLine:
+                case elementType.Reactor:
+                    selector = 'svg#postElements g.' + className
+                    break
+
+                case elementType.EntranceLine:
+                case elementType.ExitLine:
+                case elementType.BusLine:
+                case elementType.Disconnector:
+                case elementType.BreakerType1:
+                case elementType.BreakerType2:
+                case elementType.TransType1:
+                case elementType.TransType2:
+                case elementType.TransPart:
+                    selector = 'svg#postElements g.' + className + ' path'
+                    break
+
+                default:
+                    break
+            }
+
+            if (selector) {
+                let querySelector = $(selector)
+                if (querySelector.length > 0) {
+                    if (element.status) {
+                        querySelector.css('fill', voltagesLightColor[element.voltageCode])
+                        element.status = 0
+                    } else {
+                        querySelector.css('fill', voltagesDarkColor[element.voltageCode])
+                        element.status = 1
+                    }
+                }
+            }
+        }
+
+        updateVoltage = element => {
+            let patt = '(?:"name": "(.*)",\\s*)*"typeCode": (.*),\\s*(?:"voltageCode": (.*),\\s*)*(?:"ring1VoltageCode": (.*),\\s*)*(?:"ring2VoltageCode": (.*),\\s*)*(?:"ring3VoltageCode": (.*),\\s*)*"locX": (' + element.locX + '),\\s*"locY": (' + element.locY +'),\\s*"rotZ": (.*)\\s*"status": ([^,\\n]*)(?:,\\s*"interlockGuid": "(.*)")*'
+            let re = new RegExp(patt, 'g')
+            let str = JSON.stringify(element)
+            str = str.replaceAll(':', ': ')
+            str = str.replaceAll(/{|}/g, '')
+            str = str.replaceAll(',', ',\r\n\t\t\t')
+            postRawValue = postRawValue.replace(re, str)
+        }
+
+        getElement = location => {
+            let patt = '(?:"name": "(.*)",\\s*)*"typeCode": (.*),\\s*(?:"voltageCode": (.*),\\s*)*(?:"ring1VoltageCode": (.*),\\s*)*(?:"ring2VoltageCode": (.*),\\s*)*(?:"ring3VoltageCode": (.*),\\s*)*"locX": (' + location[0] / @Constants.elementsWidth +'),\\s*"locY": (' + location[1] / @Constants.elementsHeight +'),\\s*"rotZ": (.*)\\s*"status": ([^,\\n]*)(?:,\\s*"interlockGuid": "(.*)")*'
+            let re = new RegExp(patt, 'g')
+            let match = re.exec(postRawValue)
+            if (match) {
+                let post = {}
+
+                if (match[1]) {
+                    post.name = match[1]
+                }
+
+                post.typeCode = parseInt(match[2])
+
+                if (match[3]) {
+                    post.voltageCode = parseInt(match[3])
+                }
+
+                if (match[4]) {
+                    post.ring1VoltageCode = parseInt(match[4])
+                }
+
+                if (match[5]) {
+                    post.ring2VoltageCode = parseInt(match[5])
+                }
+
+                if (match[6]) {
+                    post.ring3VoltageCode = parseInt(match[6])
+                }
+
+                post.locX = parseInt(match[7])
+                post.locY = parseInt(match[8])
+                post.rotZ = parseInt(match[9])
+                post.status = parseInt(match[10])
+
+                if (match[11]) {
+                    post.interlockGuid = match[11]
+                }
+
+                return post
+            }
+
+            return null
+        }
+
+        moveUp = location => {
+            let locX = location[0]
+            let locY = location[1] - @Constants.elementsHeight;
+            return [locX, locY]
+        }
+
+        moveRight = location => {
+            let locX = location[0] + @Constants.elementsWidth;
+            let locY = location[1]
+            return [locX, locY]
+        }
+
+        moveDown = location => {
+            let locX = location[0]
+            let locY = location[1] + @Constants.elementsHeight;
+            return [locX, locY]
+        }
+
+        moveLeft = location => {
+            let locX = location[0] - @Constants.elementsWidth;
+            let locY = location[1]
+            return [locX, locY]
+        }
+    </script>
+}
+
+@section Modals {
+    <script>
+        function getInterlocks(interlockGuid) {
+            $.get('GetInterlocks?interlockGuid=' + interlockGuid, function (interlocks) {
+                $('#interlock-modal').css('display', 'flex')
+                let closeButton = $('<span />').addClass('interlock-modal-close').html('&times;').click(function () {
+                    $('#interlock-modal').css('display', 'none')
+                    $('#interlock-modal-content').empty()
+                })
+                $('#interlock-modal-content').append(closeButton).append(interlocks)
+            });
+        }
+    </script>
+}
+
+<h1 class="title">@Model.Name</h1>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'
+     id='postElements'>
+    <g class="scene">
+        @foreach (var item in Model.PostElements)
+        {
+            switch (item.TypeCode)
+            {
+                case ElementType.LineType1:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 0.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType2:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 40.000, 40.000 L 101.000, 40.000 L 101.000, 60.000 L 40.000, 60.000 L 40.000, 40.000 Z" />
+                        <path d="M 40.000, 40.000 L 60.000, 40.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 40.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType3:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M -0.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 L -0.000, 60.000 L -0.000, 40.000 Z" />
+                        <path d="M 40.000, 40.000 L 60.000, 40.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 40.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType4:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M -0.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 L -0.000, 60.000 L -0.000, 40.000 Z" />
+                        <path d="M 40.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, -0.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.BridgeLine:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M -0.000, 40.000 L 40.000, 40.000 L 40.000, 60.000 L -0.000, 60.000 L -0.000, 40.000 Z" />
+                        <path d="M 62.000, 40.000 L 102.000, 40.000 L 102.000, 60.000 L 62.000, 60.000 L 62.000, 40.000 Z" />
+                        <image x="21px" y="23px" width="60px" height="30px"
+                               xlink:href="data:img/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAAeCAQAAADakbXEAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQfkChgWNSAf6KlZAAABi0lEQVRIx73Wv0rDUBTH8W+LVAc1IlSosZZAF3F1camKkw+gg/gWgg7iU5S+QYeC8Q9ktYMWcVFxcXUpOrhY/yyVwnESW2uac9Mk96wnv8+9ufeGpDAZFssssYiDzRTjwCctnnnkgRuueTNKU405drmigwyoDlfsMh8dWsILIHt5j5Xh0VUu1WR3XbIaHs1RDYX+VJVcGHaT1lCsILTYNEMzlIdGf6rMqJad4DwyVhAumNawWW4iZQXhnmwQa3EbOSsId1iD97YeCysIdTL+cCU2VhAq/hcoTlYQtv5jbV5jh1+Z64dPYmcF4eQvu5YIKwjrvXAjMbjRzZYSYwWh9At7icIeQAqY4YkR7Yc8gtHB5iUNbBuyX7js4DDKJAvs4PJl9PwI22EO1inFvqii4WVsAFhG/1N7vuvYM8qxYMNgpv4swL5B0gYcqJuPA3fPVWcdQk3Z2iYfCOdpK9NqaRzlWXRpBvY0OVKmOWlmla1nEXaBDR/Kl1NQBRaUae8pRDnHMdqKroyqC/gGybYNrwuawCoAAAAASUVORK5CYII=" />
+                    </g>
+                    break;
+
+                case ElementType.EntranceLine:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path transform="rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])"
+                              d="M 0.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 Z" />
+                        <text x="105px" y="20px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.ExitLine:
+                case ElementType.BusLine:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path transform="rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])"
+                              d="M 0.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 Z" />
+                        <text x="105px" y="20px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.Disconnector:
+                    if (item.InterlockGuid == Guid.Empty || item.InterlockGuid == null)
+                    {
+                        <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                            <path onclick="runManeuver(@item.LocX, @item.LocY)" style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                                  d="M 50.000, 4.000 C 75.405, 4.000 96.000, 24.595 96.000, 50.000 C 96.000, 75.405 75.405, 96.000 50.000, 96.000 C 24.595, 96.000 4.000, 75.405 4.000, 50.000 C 4.000, 24.595 24.595, 4.000 50.000, 4.000 Z" />
+                            <text x="102.5px" y="-15px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                        </g>
+                    }
+                    else
+                    {
+                        <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                            <path onclick="runManeuver(@item.LocX, @item.LocY)" @*onclick="getInterlocks('@item.InterlockGuid')"*@ style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                                  d="M 50.000, 4.000 C 75.405, 4.000 96.000, 24.595 96.000, 50.000 C 96.000, 75.405 75.405, 96.000 50.000, 96.000 C 24.595, 96.000 4.000, 75.405 4.000, 50.000 C 4.000, 24.595 24.595, 4.000 50.000, 4.000 Z" />
+                            <text x="102.5px" y="-15px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                        </g>
+                    }
+                    break;
+
+                case ElementType.BreakerType1:
+                    if (item.InterlockGuid == Guid.Empty || item.InterlockGuid == null)
+                    {
+                        <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                            <path onclick="runManeuver(@item.LocX, @item.LocY)" style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                                  d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                            <text x="100px" y="-20px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                        </g>
+                    }
+                    else
+                    {
+                        <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                            <path onclick="runManeuver(@item.LocX, @item.LocY)" @*onclick="getInterlocks('@item.InterlockGuid')"*@ style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                                  d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                            <text x="100px" y="-20px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                        </g>
+                    }
+                    break;
+
+                case ElementType.BreakerType2:
+                    if (item.InterlockGuid == Guid.Empty || item.InterlockGuid == null)
+                    {
+                        <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                            <path onclick="runManeuver(@item.LocX, @item.LocY)" style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                                  d="M 25.000, 25.000 L 75.000, 25.000 L 75.000, 75.000 L 25.000, 75.000 L 25.000, 25.000 Z" />
+                            <text x="100px" y="0px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                        </g>
+                    }
+                    else
+                    {
+                        <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                            <path onclick="runManeuver(@item.LocX, @item.LocY)" @*onclick="getInterlocks('@item.InterlockGuid')"*@ style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                                  d="M 25.000, 25.000 L 75.000, 25.000 L 75.000, 75.000 L 25.000, 75.000 L 25.000, 25.000 Z" />
+                            <text x="100px" y="0px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                        </g>
+                    }
+                    break;
+
+                case ElementType.TransType1:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring1VoltageCode.Value]"
+                              d="M 49.800, 4.250 C 67.473, 4.250 81.800, 18.577 81.800, 36.250 C 81.800, 53.923 67.473, 68.250 49.800, 68.250 C32.127, 68.250 17.800, 53.923 17.800, 36.250 C 17.800, 18.577 32.127, 4.250 49.800, 4.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring2VoltageCode.Value]"
+                              d="M 49.812, 40.250 C 67.486, 40.250 81.812, 54.577 81.812, 72.250 C 81.812, 89.923 67.486, 104.250 49.812, 104.250 C32.139, 104.250 17.812, 89.923 17.812, 72.250 C 17.812, 54.577 32.139, 40.250 49.812, 40.250 Z" />
+                        <text x="100px" y="0px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.TransType2:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring1VoltageCode.Value]"
+                              d="M 66.800, 43.250 C 83.368, 43.250 96.800, 56.681 96.800, 73.250 C 96.800, 89.818 83.368, 103.250 66.800, 103.250 C 50.231, 103.250 36.800, 89.818 36.800, 73.250 C 36.800, 56.681 50.231, 43.250 66.800, 43.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring2VoltageCode.Value]"
+                              d="M 34.812, 22.250 C 51.381, 22.250 64.812, 35.681 64.812, 52.250 C 64.812, 68.818 51.381, 82.250 34.812, 82.250 C 18.244, 82.250 4.812, 68.818 4.812, 52.250 C 4.812, 35.681 18.244, 22.250 34.812, 22.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring3VoltageCode.Value]"
+                              d="M 66.812, 4.250 C 83.381, 4.250 96.812, 17.681 96.812, 34.250 C 96.812, 50.819 83.381, 64.250 66.812, 64.250 C 50.244, 64.250 36.812, 50.819 36.812 ,34.250 C 36.812, 17.681 50.244, 4.250 66.812, 4.250 Z" />
+                        <text x="110px" y="-15px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.TransPart:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring1VoltageCode.Value]"
+                              d="M 49.800, 4.250 C 67.473, 4.250 81.800, 18.577 81.800, 36.250 C 81.800, 53.923 67.473, 68.250 49.800, 68.250 C32.127, 68.250 17.800, 53.923 17.800, 36.250 C 17.800, 18.577 32.127, 4.250 49.800, 4.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.Ring2VoltageCode.Value]"
+                              d="M 49.812, 40.250 C 67.486, 40.250 81.812, 54.577 81.812, 72.250 C 81.812, 89.923 67.486, 104.250 49.812, 104.250 C32.139, 104.250 17.812, 89.923 17.812, 72.250 C 17.812, 54.577 32.139, 40.250 49.812, 40.250 Z" />
+                    </g>
+                    break;
+
+                case ElementType.Generator:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="#000000"
+                              d="M 50.000, 4.000 C 75.405, 4.000 96.000, 24.595 96.000, 50.000 C 96.000, 75.405 75.405, 96.000 50.000, 96.000 C 24.595, 96.000 4.000, 75.405 4.000, 50.000 C 4.000, 24.595 24.595, 4.000 50.000, 4.000 Z" />
+                        <text x="50px" y="55px" dominant-baseline="middle" text-anchor="middle" font-size="36pt" font-weight="bold">G</text>
+                    </g>
+                    break;
+
+                case ElementType.Reactor:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)" fill-rule="evenodd" fill="#000000">
+                        <path d="M 17.000, 59.781 L 54.000, 59.781 L 54.000, 64.781 L 17.000, 64.781 L 17.000, 59.781 Z" />
+                        <path d="M 49.000, -0.000 L 54.000, -0.000 L 54.000, 32.000 L 49.000, 32.000 L 49.000, -0.000 Z" />
+                        <path d="M 49.000, 60.250 L 54.000, 60.250 L 54.000, 100.000 L 49.000, 100.000 L 49.000, 60.250 Z" />
+                        <image x="17px" y="27px" width="70px" height="70px"
+                               xlink:href="data:img/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAABGCAQAAADbJyoPAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAHdElNRQfkChgTOQH5/zTgAAAECUlEQVRo3s2aP2wTVxzHPz7bxNRxRBOawcYmESiiThpVZIGhSCnqXFCkAhITILIAKkhBnZkyMpCVqVERMDAhpZW6EAgDia22uCGKlaTGJooRQgkRdontDtiPd2c78Vnn9/q75ffs+/O57727e+/7OxdORIAEXtbJ8pIkz1kmRYqS3d24HIJ5hV9qF/mDOWb5jSRFR45gC2adUo3lBZOcoOv/AVOiRI5pRlUCddRF+bgUmOYUvp1243YIx0eCeVbYpJ22qn9dRPieL1lkVZU+HtoJM8QP3ORP8jUUSnNBFYxZqaNM8HcNoAk6dADBPn7kWRXOQ3r04ECIayxbcJ7SrwsHokxSMOE845A+nDYuk7Wo06MPB46TMOFM0akT5ytLd57QCQN9zEkwRc7pxelnXsLJMKgXZ5g1Cee+afChIa5QFDBbnNYL4+EXSZsZvXcVRFmStLmoFwauSdo8Ya9emCCzAibPCDg3uLIfG/j5rjwhcOPigfqhu1mbF0KbFaJgaITJ8KvIwwzrhYFJPpQzF0MauwwAu4iLCxUnoleZf5kSeT9hvTAwIzIPvbphUmyIvF83zBqLIj+gG+Ytr0Suvc9s8lrk3bphimyK3O8hUE5d5MlrwHkvMp9Bggxp0qxyQ69I4MFLezlX7DCVY7fIcgbvRMOn4e1gSMPxTYOsaHzOZ8ph/NL1WDNIiUaQPcph9hAUecqQn4B0K4fp5qDIkwYJ0QgQVg4TFo8WeG6wxJZoHlUO8+mIWyxBxDTA2aUURR5cxYiAm9vSdOqYUphv2BLHvo3boMCsKDm4OasU5qx4spWYpQAQZUXwLUi3WqsjyIJ5qgLg5a5krF9XBnNd8iLu4q38PCL52XFCSlBCUuctT28/xl6eSNPwMSUwY/Un/helfp1SYG0NkqpviXQyI5HewdNSFA93tjeLTkvaFLnSUpjLJhvtTPUKfu5LtGsMtwxlmNWdDcZBMtJK8y0qNjRsvZ6T5CsxR5/jKFZT+vx2K09Yah8DjqIM2LPrO5kyrZ7guGMoTRQy9vPUtEmWSzVKoHajjUtVJZ79jWx4yCJmgcnKa6zJiPJz88WvqEWdEstcbXJQGuKqZEBXVLF1cr08rCp0xhhjny2QegXTXrtn1GG5sypPn1scaaAPtXGEW86Wki+QrrG7PDHGOckQYQLSLNRNgDBDnGScWM0i+8vti+w7fbJymJ848WngY4p1kmR4wwY5wEeAToIcqHPmH3jAOHPNqVIJH6d4bLkX7C4FHjfyYUZj0cUo0+SaAsnxiFGnqyZdjHCPpC2QJPcYadxqsfeZk5c+vuVrDjO4rdFfIk6MOL+zIAx5x2EqESFMDwMcJMQXtLMbeM87sqRZ5C+W+UdyNxqO/wC60amKVOeaNwAAAABJRU5ErkJggg==" />
+                    </g>
+                    break;
+
+                case ElementType.Earth:
+                    <g class="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" stroke="#000000">
+                        <path d="M 2.000, 57.000 L 98.000, 57.000 L 98.000, 65.000 L 2.000, 65.000 L 2.000, 57.000 Z" />
+                        <path d="M 15.000 ,68.000 L 85.000, 68.000 L 85.000, 76.000 L 15.000, 76.000 L 15.000, 68.000 Z" />
+                        <path d="M 25.000 ,79.000 L 75.000, 79.000 L 75.000, 87.000 L 25.000, 87.000 L 25.000, 79.000 Z" />
+                        <path d="M 37.000 ,90.000 L 63.000, 90.000 L 63.000, 98.000 L 37.000, 98.000 L 37.000, 90.000 Z" />
+                        <path d="M 46.000 ,-0.000 L 54.000, -0.000 L 54.000, 57.000 L 46.000, 57.000 L 46.000, -0.000 Z" />
+                    </g>
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    </g>
+</svg>
+<partial name="_InterlockModal" />

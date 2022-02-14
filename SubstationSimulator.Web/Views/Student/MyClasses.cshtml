@@ -1,0 +1,108 @@
+﻿@using ElectricalEmulator.Application.Common
+
+@model IEnumerable<ElectricalEmulator.Application.ViewModels.UserClasses.UserClassViewModel>
+
+@{
+    ViewData["Title"] = "لیست کلاس های من";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section PluginStyles {
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/plugins/datatables/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="~/dist/css/custom-datatables.css">
+    <!-- Select2 -->
+    <link rel="stylesheet" href="~/plugins/select2/select2.min.css">
+}
+
+@section PluginScripts {
+    <!-- DataTables -->
+    <script src="~/plugins/datatables/jquery.dataTables.js"></script>
+    <script src="~/plugins/datatables/dataTables.bootstrap4.js"></script>
+    <script src="~/dist/js/custom-datatables.js"></script>
+    <!-- Select2 -->
+    <script src="~/plugins/select2/select2.full.min.js"></script>
+}
+
+@section Modals {
+    <script>
+        getPosts = userClassGuid => {
+            $.get('/ClassPost/Index?userClassGuid=' + userClassGuid, data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('لیست پست ها')
+                $('.modal-body').html(data)
+            })
+        }
+    </script>
+}
+
+<!-- Content Header (Page header) -->
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Dashboard")">داشبورد</a></li>
+                    <li class="breadcrumb-item active">@ViewData["Title"]</li>
+                </ol>
+            </div>
+        </div>
+    </div><!-- /.container-fluid -->
+</section>
+
+<!-- Main content -->
+<section class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <table id="datatable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>@Html.DisplayNameFor(model => model.Class.Title)</th>
+                                <th>@Html.DisplayNameFor(model => model.Class.Description)</th>
+                                <th>@Html.DisplayNameFor(model => model.Class.User)</th>
+                                <th>@Html.DisplayNameFor(model => model.IsAccept)</th>
+                                <th>@Html.DisplayNameFor(model => model.AcceptanceDate)</th>
+                                <th>@Html.DisplayNameFor(model => model.CreationDate)</th>
+                                <th>کنترل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var counter = 1;
+
+                                foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>@(counter++)</td>
+                                        <td>@item.Class.Title</td>
+                                        <td>@item.Class.Description</td>
+                                        <td>@(item.Class.User.FirstName + " " + item.Class.User.LastName)</td>
+                                        <td>@item.IsAccept</td>
+                                        <td>@item.AcceptanceDate</td>
+                                        <td>@item.CreationDate</td>
+                                        <td>
+                                            @if (item.IsAccept == Constants.Accept)
+                                            {
+                                                <a href="javascript:void(0)" onclick="getPosts('@item.UserClassGuid')" class="btn btn-primary btn-sm control" data-toggle="tooltip" data-placement="auto" title="لیست پست ها">
+                                                    <i class="fa fa-plug"></i>
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+</section>
+<!-- /.content -->

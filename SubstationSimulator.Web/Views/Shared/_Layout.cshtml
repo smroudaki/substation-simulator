@@ -1,0 +1,176 @@
+﻿
+@using System.Security.Claims
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+    <title>پنل | @ViewData["Title"]</title>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="~/plugins/font-awesome/css/font-awesome.min.css">
+    <!-- Ionicons -->
+    <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+    <!-- Toastr -->
+    <link href="~/dist/js/plugins/toastr/css/toastr.css" rel="stylesheet" />
+    @RenderSection("PluginStyles", required: false)
+    <!-- Theme style -->
+    <link rel="stylesheet" href="~/dist/css/adminlte.min.css">
+    <!-- bootstrap rtl -->
+    <link rel="stylesheet" href="~/dist/css/bootstrap-rtl.min.css">
+    <!-- template rtl version -->
+    <link rel="stylesheet" href="~/dist/css/custom-style.css">
+    @RenderSection("Styles", required: false)
+    <!-- My styles -->
+    <link rel="stylesheet" href="~/dist/css/site.css" />
+</head>
+<body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+        <!-- Navbar -->
+        <nav class="main-header navbar navbar-expand navbar-dark border-bottom">
+            <partial name="_Nav" />
+        </nav>
+        <!-- /.navbar -->
+        <!-- Main Sidebar Container -->
+        <aside class="main-sidebar sidebar-dark-primary elevation-4">
+            @{
+                var role = User.FindFirstValue(ClaimTypes.Role);
+                var fullName = User.FindFirstValue(ClaimTypes.GivenName);
+
+                string roleDisplayName;
+                switch (role)
+                {
+                    case "Admin":
+                        roleDisplayName = "ادمین";
+                        break;
+                    case "Master":
+                        roleDisplayName = "استاد";
+                        break;
+                    case "Student":
+                        roleDisplayName = "دانشجو";
+                        break;
+                    default:
+                        roleDisplayName = string.Empty;
+                        break;
+                }
+            }
+
+            <!-- Brand Logo -->
+            <a href="@Url.Action("Index", "Dashboard")" class="brand-link">
+                <img src="~/dist/img/AdminLTELogo.png" alt="Logo" class="brand-image img-circle elevation-3"
+                     style="opacity: .8">
+                <span class="brand-text font-weight-light">پنل @roleDisplayName</span>
+            </a>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div>
+                    <!-- Sidebar user panel (optional) -->
+                    <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                        <div class="image">
+                            <img src="~/dist/img/male.png" class="img-circle elevation-2" alt="User Image">
+                        </div>
+                        <div class="info">
+                            <a href="javascript:void(0)" class="d-block">@fullName</a>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Menu -->
+                    <nav class="mt-2">
+                        <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                            <!-- Add icons to the links using the .nav-icon class
+                            with font-awesome or any other icon font library -->
+                            @switch (role)
+                            {
+                                case "Admin":
+                                    <partial name="_AdminMenu" />
+                                    break;
+                                case "Master":
+                                    <partial name="_MasterMenu" />
+                                    break;
+                                case "Student":
+                                    <partial name="_StudentMenu" />
+                                    break;
+                                default:
+                                    break;
+                            }
+                        </ul>
+                    </nav>
+                    <!-- /.sidebar-menu -->
+                </div>
+            </div>
+            <!-- /.sidebar -->
+        </aside>
+
+        <!-- Content Wrapper. Contains page content -->
+        <div class="content-wrapper">
+            @RenderBody()
+        </div>
+        <!-- /.content-wrapper -->
+        <!-- Control Sidebar -->
+        <aside class="control-sidebar control-sidebar-dark">
+            <!-- Control sidebar content goes here -->
+            @RenderSection("ControlSidebar", required: false)
+        </aside>
+        <!-- /.control-sidebar -->
+        <!-- Main Footer -->
+        <footer class="main-footer">
+            <strong>&copy; تمامی حقوق این پنل متعلق به گروه StartDone می باشد.</strong>
+        </footer>
+    </div>
+    <!-- ./wrapper -->
+    <!-- REQUIRED SCRIPTS -->
+    <!-- jQuery -->
+    <script src="~/plugins/jquery/jquery.min.js"></script>
+    <!-- Bootstrap 4 -->
+    <script src="~/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <!-- Toastr -->
+    <script src="~/dist/js/plugins/toastr/js/toastr.min.js"></script>
+    <script src="~/dist/js/toaster-config.js"></script>
+    @RenderSection("PluginScripts", required: false)
+    <!-- AdminLTE App -->
+    <script src="~/dist/js/adminlte.min.js"></script>
+    @RenderSection("Scripts", required: false)
+    @RenderSection("Modals", required: false)
+    <!-- My scripts -->
+    <script src="~/dist/js/site.js"></script>
+    <script>
+        editProfile = () => {
+            $.get('@Url.Action("EditProfile", "Account")', data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('ویرایش پروفایل')
+                $('.modal-body').html(data)
+            })
+        }
+        changePassword = () => {
+            $.get('@Url.Action("ChangePassword", "Account")', data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('تغییر کلمه عبور')
+                $('.modal-body').html(data)
+            })
+        }
+        showInfo = () => {
+            $.get('/Post/GetInfo', data => {
+                $('#interlock-modal').css('display', 'flex')
+                $('#interlock-modal-body').append(data)
+            })
+        }
+        showReports = () => {
+            $.get('/Report', data => {
+                $('#interlock-modal').css('display', 'flex')
+                $('#interlock-modal-body').append(data)
+            })
+        }
+        closeInterlockModal = () => {
+            $('#interlock-modal').css('display', 'none')
+            $('#interlock-modal-body').empty()
+        }
+
+    </script>
+    <partial name="_Modal" />
+    <partial name="_Toaster" />
+</body>
+</html>

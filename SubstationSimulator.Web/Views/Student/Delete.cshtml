@@ -1,0 +1,9 @@
+﻿@using ElectricalEmulator.Application.Common
+
+<form asp-action="Delete" method="post" id="modal-form">
+    <p>@Constants.StudentDeleteQuestion</p>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">حذف</button>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

@@ -1,0 +1,123 @@
+﻿@using System.Security.Claims
+
+@model IEnumerable<ElectricalEmulator.Application.ViewModels.UserClasses.UserClassViewModel>
+
+@{
+    ViewData["Title"] = "لیست دانشجویان";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section PluginStyles {
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/plugins/datatables/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="~/dist/css/custom-datatables.css">
+    <!-- Select2 -->
+    <link rel="stylesheet" href="~/plugins/select2/select2.min.css">
+}
+
+@section PluginScripts {
+    <!-- DataTables -->
+    <script src="~/plugins/datatables/jquery.dataTables.js"></script>
+    <script src="~/plugins/datatables/dataTables.bootstrap4.js"></script>
+    <script src="~/dist/js/custom-datatables.js"></script>
+    <!-- Select2 -->
+    <script src="~/plugins/select2/select2.full.min.js"></script>
+}
+
+@section Modals {
+    <script>
+        getPosts = userClassGuid => {
+            $.get('/Class/Posts?userClassGuid=' + userClassGuid, data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('لیست پست ها')
+                $('.modal-body').html(data)
+            })
+        }
+        register = () => {
+            $.get('/Class/Register?classGuid=@TempData["ClassGuid"]', data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('افزودن دانشجو به کلاس')
+                $('.modal-body').html(data)
+            })
+        }
+        unregister = (classGuid, userClassGuid) => {
+            $.get('/Class/Unregister?classGuid=' + classGuid + '&userClassGuid=' + userClassGuid, data => {
+                $('#exampleModal').modal('show')
+                $('#exampleModalLabel').html('حذف دانشجو از کلاس')
+                $('.modal-body').html(data)
+            })
+        }
+    </script>
+}
+
+<!-- Content Header (Page header) -->
+<section class="content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Dashboard")">داشبورد</a></li>
+                    <li class="breadcrumb-item active">@ViewData["Title"]</li>
+                </ol>
+            </div>
+            <div class="col-sm-6">
+                <div class="pull-left" data-toggle='tooltip' data-placement='auto' title='افزودن دانشجو به کلاس'>
+                    <a href="javascript:void(0)" onclick="register()">
+                        <i class="fa fa-plus navigation-btn-icon"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div><!-- /.container-fluid -->
+</section>
+
+<!-- Main content -->
+<section class="content">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <table id="datatable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>@Html.DisplayNameFor(model => model.User)</th>
+                                <th>@Html.DisplayNameFor(model => model.CreationDate)</th>
+                                <th>@Html.DisplayNameFor(model => model.AcceptanceDate)</th>
+                                <th>کنترل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var counter = 1;
+
+                                foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>@(counter++)</td>
+                                        <td>@(item.User.FirstName + " " + item.User.LastName)</td>
+                                        <td>@item.CreationDate</td>
+                                        <td>@item.AcceptanceDate</td>
+                                        <td>
+                                            <a href="javascript:void(0)" onclick="getPosts('@item.UserClassGuid')" class="btn btn-sm btn-primary control" data-toggle="tooltip" data-placement="auto" title="لیست پست ها">
+                                                <i class="fa fa-plug"></i>
+                                            </a>
+                                            <a href="javascript:void(0)" onclick="unregister('@item.Class.ClassGuid', '@item.UserClassGuid')" class="btn btn-sm btn-danger control" data-toggle="tooltip" data-placement="auto" title="حذف">
+                                                <i class="fa fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <!-- /.card-body -->
+            </div>
+            <!-- /.card -->
+        </div>
+        <!-- /.col -->
+    </div>
+    <!-- /.row -->
+</section>
+<!-- /.content -->

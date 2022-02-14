@@ -1,0 +1,12 @@
+﻿@using ElectricalEmulator.Application.Common 
+
+@model ElectricalEmulator.Application.ViewModels.Classes.SendRequestViewModel
+
+<form asp-action="SendRequest" method="post" id="modal-form">
+    <input asp-for="ClassGuid" type="hidden" />
+    <p>@Constants.ClassSendRequestQuestion</p>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">ثبت</button>
+</form>
+
+<partial name="_ValidationScriptsPartial" />

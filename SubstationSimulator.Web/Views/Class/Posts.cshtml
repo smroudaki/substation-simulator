@@ -1,0 +1,22 @@
+﻿@model ElectricalEmulator.Application.ViewModels.UserClassPosts.CreateUserClassPostViewModel
+
+<form asp-controller="UserClassPost" asp-action="Index" method="get" id="modal-form">
+    <input asp-for="UserClassGuid" type="hidden" />
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-group">
+                <label asp-for="PostGuid"></label>
+                <select asp-for="PostGuid" asp-items="ViewBag.Posts" class="form-control select2"></select>
+                <span asp-validation-for="PostGuid" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">لغو</button>
+    <button type="submit" class="btn btn-primary">نمایش</button>
+</form>
+
+<script>
+    $('.select2').select2()
+</script>
+
+<partial name="_ValidationScriptsPartial" />

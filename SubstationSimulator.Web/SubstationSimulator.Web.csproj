@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <CopyRefAssembliesToPublishDirectory>false</CopyRefAssembliesToPublishDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <UserSecretsId>88298958-96b2-4303-87f8-c550cdf47851</UserSecretsId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>obj\Debug\netcoreapp3.1\SubstationSimulator.Web.xml</DocumentationFile>
+    <OutputPath></OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="wwwroot\fonts\**" />
+    <Compile Remove="wwwroot\img\**" />
+    <Content Remove="wwwroot\fonts\**" />
+    <Content Remove="wwwroot\img\**" />
+    <EmbeddedResource Remove="wwwroot\fonts\**" />
+    <EmbeddedResource Remove="wwwroot\img\**" />
+    <None Remove="wwwroot\fonts\**" />
+    <None Remove="wwwroot\img\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="3.1.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="3.1.6" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="3.1.4" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="5.5.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SubstationSimulator.Infra.Data\SubstationSimulator.Infra.Data.csproj" />
+    <ProjectReference Include="..\SubstationSimulator.Infra.IoC\SubstationSimulator.Infra.IoC.csproj" />
+  </ItemGroup>
+
+</Project>

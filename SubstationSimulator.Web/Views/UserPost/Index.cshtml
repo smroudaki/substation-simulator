@@ -1,0 +1,2578 @@
+﻿@using ElectricalEmulator.Domain.Enums
+@using ElectricalEmulator.Application.Common
+@using System.Security.Claims
+
+@model ElectricalEmulator.Application.ViewModels.Posts.PostJsonResultViewModel
+
+@{
+    ViewData["Title"] = "نمایش پست";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section PluginStyles {
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/plugins/datatables/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="~/dist/css/custom-datatables.css">
+}
+
+@section PluginScripts {
+    <!-- DataTables -->
+    <script src="~/plugins/datatables/jquery.dataTables.js"></script>
+    <script src="~/plugins/datatables/dataTables.bootstrap4.js"></script>
+    <script src="~/dist/js/custom-datatables.js"></script>
+}
+
+@section Styles {
+    <style type="text/css" media="screen">
+        body, html {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+            svg g:not(.scene) {
+                transition: all 0.25s;
+            }
+
+            svg#postElements {
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+        nav,
+        footer {
+            z-index: 8;
+        }
+
+        footer {
+            background: #ffffff;
+        }
+
+        .title {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            z-index: 1;
+        }
+
+        #features {
+            padding: 10px;
+        }
+
+        .interlock-option-box {
+            margin-top: 10px;
+            margin-right: 0px;
+            margin-left: 0px;
+            direction: ltr;
+            border-top: 3px solid #007bff;
+            border-right: 2px solid #007bff;
+            border-bottom: 1px solid #007bff;
+            border-left: 2px solid #007bff;
+            border-radius: 5px;
+        }
+
+        .interlock-option-title {
+            margin-bottom: 10px;
+            padding-top: 7.5px;
+            padding-right: 10px;
+            padding-bottom: 5px;
+            padding-left: 10px;
+            border-bottom: 0.5px solid #007bff;
+            text-align: center;
+        }
+
+            .interlock-option-title h4 {
+                margin-bottom: 0;
+                font-size: 16px;
+                font-weight: bolder;
+            }
+
+        .interlock-option-selection {
+            text-align: left;
+            margin-bottom: 10px;
+            padding: 0 10px;
+            font-size: 12px;
+        }
+
+        .interlock-option-box input[type=radio] {
+            position: relative;
+            top: 2px;
+            margin-right: 10px;
+        }
+
+        .interlock-option-selection label {
+            margin-bottom: 0;
+        }
+
+        #close-control-sidebar {
+            display: inline-block;
+            margin: 10px;
+            cursor: pointer;
+        }
+    </style>
+}
+
+@section ControlSidebar {
+    <span id="close-control-sidebar">&#10005</span>
+    <div id="features"></div>
+}
+
+@section Scripts {
+    <script src="~/dist/js/svg-pan-zoom.min.js"></script>
+    <script src="~/dist/js/hammer.js"></script>
+    <script>
+        $(document).ready(function () {
+            svgPanZoom('#postElements', {
+                zoomScaleSensitivity: 0.5,
+                //minZoom: 0.5,
+                //maxZoom: 1,
+                beforePan: function (oldPan, newPan) {
+                    let stopHorizontal = false,
+                        stopVertical = false,
+                        gutterWidth = 0,
+                        gutterHeight = 0,
+                        // Computed variables
+                        sizes = this.getSizes(),
+                        leftLimit = -((sizes.viewBox.x + sizes.viewBox.width) * sizes.realZoom) + gutterWidth,
+                        rightLimit = sizes.width - gutterWidth - (sizes.viewBox.x * sizes.realZoom),
+                        topLimit = -((sizes.viewBox.y + sizes.viewBox.height) * sizes.realZoom) + gutterHeight,
+                        bottomLimit = sizes.height - gutterHeight - (sizes.viewBox.y * sizes.realZoom)
+
+                    customPan = {}
+                    customPan.x = Math.max(leftLimit, Math.min(rightLimit, newPan.x))
+                    customPan.y = Math.max(topLimit, Math.min(bottomLimit, newPan.y))
+
+                    return customPan
+                },
+                customEventsHandler: {
+                    haltEventListeners: ['touchstart', 'touchend', 'touchmove', 'touchleave', 'touchcancel'],
+                    init: function (options) {
+                        let instance = options.instance,
+                            initialScale = 1,
+                            pannedX = 0,
+                            pannedY = 0
+
+                        // Init Hammer
+                        // Listen only for pointer and touch events
+                        this.hammer = Hammer(options.svgElement, {
+                            inputClass: Hammer.SUPPORT_POINTER_EVENTS ? Hammer.PointerEventInput : Hammer.TouchInput
+                        })
+
+                        // Enable pinch
+                        this.hammer.get('pinch').set({ enable: true })
+
+                        // Handle double tap
+                        this.hammer.on('doubletap', function (ev) {
+                            instance.zoomIn()
+                        })
+
+                        // Handle pan
+                        this.hammer.on('panstart panmove', function (ev) {
+                            // On pan start reset panned variables
+                            if (ev.type === 'panstart') {
+                                pannedX = 0
+                                pannedY = 0
+                            }
+
+                            // Pan only the difference
+                            instance.panBy({ x: ev.deltaX - pannedX, y: ev.deltaY - pannedY })
+                            pannedX = ev.deltaX
+                            pannedY = ev.deltaY
+                        })
+
+                        // Handle pinch
+                        this.hammer.on('pinchstart pinchmove', function (ev) {
+                            // On pinch start remember initial zoom
+                            if (ev.type === 'pinchstart') {
+                                initialScale = instance.getZoom()
+                                instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y })
+                            }
+
+                            instance.zoomAtPoint(initialScale * ev.scale, { x: ev.center.x, y: ev.center.y })
+                        })
+
+                        // Prevent moving the page on some devices when panning over SVG
+                        options.svgElement.addEventListener('touchmove', function (e) { e.preventDefault() })
+                    },
+
+                    destroy: function () {
+                        this.hammer.destroy()
+                    }
+                }
+            })
+        })
+    </script>
+    <script>
+        @{
+            var routeData = ViewContext.RouteData;
+
+            var routeAction = routeData.Values["action"].ToString();
+            var routeController = routeData.Values["controller"].ToString();
+
+            if ((routeController.Equals("UserPost") || routeController.Equals("UserClassPost")) &&
+                routeAction.Equals("Index") &&
+                User.FindFirst(ClaimTypes.Role).Value.Equals("Student"))
+            {
+                @:$.get('/api/CurrentUser/GetRemainingTime', remainingTime => {
+                @:    $('#timeRemaining')[0].innerHTML = parseInt(remainingTime / 60)
+                @:})
+                @:setInterval(() => {
+                @:    $.ajax({
+                @:        method: 'PUT',
+                @:        url: 'api/CurrentUser/DecreaseRemainingTime',
+                @:        contentType: 'application/json',
+                @:        success: (result, status, xhr) => {
+                @:            if (result <= 0) {
+                @:                alert('زمان شما به اتمام رسید!')
+                @:                window.location.replace("/Post");
+                @:                return
+                @:            }
+                @:            $('#timeRemaining')[0].innerHTML = parseInt(result / 60)
+                @:        },
+                @:        error: (xhr, status, error) => {
+                @:           console.log(error)
+                @:        }
+                @:    })
+                @:}, @(Constants.DecreasingRemainigTimeAmount * 1000))
+            }
+        }
+
+        $('#close-control-sidebar').click(event => {
+            $('body').removeClass('control-sidebar-slide-open')
+        })
+
+        $('svg').contextmenu(() => {
+            return false
+        })
+
+        $('.hasOptions').contextmenu(event => {
+            let waitTime = 0
+            if ($('body').hasClass('control-sidebar-slide-open')) {
+                        setTimeout(() => {
+                    $('body').removeClass('control-sidebar-slide-open')
+                        }, waitTime)
+                waitTime = 225
+            }
+            setTimeout(() => {
+                $('#features').empty()
+                if (event.target.attributes['data-interlockguid'].value) {
+                    const row = $('<div class="row" />')
+                    const col12 = $('<div class="col-12" />')
+                    const showInterlockBtn = $('<div class="btn btn-primary d-block" />').html('نمایش اینترلاک').click(() => {
+                        getInterlocksPartial(event.target.attributes['data-interlockguid'].value)
+                    })
+                    col12.append(showInterlockBtn).appendTo(row)
+                    $('#features').append(row)
+                }
+                if (event.target.attributes['data-mode'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Mode')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const firstSelectionCol6 = $('<div class="col-6" />')
+                    const subInput = $('<input type="radio" name="mode" id="sub" />')
+                    const subLabel = $('<label for="sub" />').html('Sub')
+                    const secondSelectionCol6 = $('<div class="col-6" />')
+                    const scadaInput = $('<input type="radio" name="mode" id="scada" />')
+                    const scadaLabel = $('<label for="scada" />').html('Scada')
+                    titleCol12.append(h4).appendTo(title)
+                    firstSelectionCol6.append(subInput).append(subLabel).appendTo(selection)
+                    secondSelectionCol6.append(scadaInput).append(scadaLabel).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                    switch (event.target.attributes['data-mode'].value) {
+                        case 'Sub':
+                            subInput.prop('checked', true)
+                            break
+                        case 'Scada':
+                            scadaInput.prop('checked', true)
+                            break
+                        default:
+                            break
+                    }
+                }
+                if (event.target.attributes['data-selectorswitch'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Selector Switch')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const firstSelectionCol6 = $('<div class="col-6" />')
+                    const remoteInput = $('<input type="radio" name="selectorSwitch" id="remote" />')
+                    const remoteLabel = $('<label for="remote" />').html('Remote')
+                    const secondSelectionCol6 = $('<div class="col-6" />')
+                    const localInput = $('<input type="radio" name="seUserectorSwitch" id="local" />')
+                    const localLabel = $('<label for="local" />').html('Local')
+                    const thirdSelectionCol6 = $('<div class="col-6" />')
+                    const disconnectInput = $('<input type="radio" name="selectorSwitch" id="disconnect" />')
+                    const disconnectLabel = $('<label for="disconnect" />').html('Disconnect')
+                    titleCol12.append(h4).appendTo(title)
+                    firstSelectionCol6.append(remoteInput).append(remoteLabel).appendTo(selection)
+                    secondSelectionCol6.append(localInput).append(localLabel).appendTo(selection)
+                    thirdSelectionCol6.append(disconnectInput).append(disconnectLabel).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                    switch (event.target.attributes['data-selectorswitch'].value) {
+                        case 'Remote':
+                            remoteInput.prop('checked', true)
+                            break
+                        case 'Local':
+                            localInput.prop('checked', true)
+                            break
+                        case 'Disconnect':
+                            disconnectInput.prop('checked', true)
+                            break
+                        default:
+                            break
+                    }
+                }
+                if (event.target.attributes['data-warningpanel'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Warning Panel')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const firstSelectionCol6 = $('<div class="col-6" />')
+                    const installInput = $('<input type="radio" name="warningPanel" id="install" />')
+                    const installLabel = $('<label for="install" />').html('Install')
+                    const secondSelectionCol6 = $('<div class="col-6" />')
+                    const collectInput = $('<input type="radio" name="warningPanel" id="collect" />')
+                    const collectLabel = $('<label for="collect" />').html('Collect')
+                    titleCol12.append(h4).appendTo(title)
+                    firstSelectionCol6.append(installInput).append(installLabel).appendTo(selection)
+                    secondSelectionCol6.append(collectInput).append(collectLabel).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                    switch (event.target.attributes['data-warningpanel'].value) {
+                        case 'Install':
+                            installInput.prop('checked', true)
+                            break
+                        case 'Collect':
+                            collectInput.prop('checked', true)
+                            break
+                        default:
+                            break
+                    }
+                }
+                if (event.target.attributes['data-namratornumber'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Namrator Number')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const selectionCol12 = $('<div class="col-12" />')
+                    const span = $('<span />').html(event.target.attributes['data-namratornumber'].value)
+                    titleCol12.append(h4).appendTo(title)
+                    selectionCol12.append(span).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                }
+                if (event.target.attributes['data-bypass'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Bypass Interlock')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const firstSelectionCol6 = $('<div class="col-6" />')
+                    const falseInput = $('<input type="radio" name="bypass" id="false" />')
+                    const falseLabel = $('<label for="false" />').html('False')
+                    const secondSelectionCol6 = $('<div class="col-6" />')
+                    const trueInput = $('<input type="radio" name="bypass" id="true" />')
+                    const trueLabel = $('<label for="true" />').html('True')
+                    titleCol12.append(h4).appendTo(title)
+                    firstSelectionCol6.append(falseInput).append(falseLabel).appendTo(selection)
+                    secondSelectionCol6.append(trueInput).append(trueLabel).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                    switch (event.target.attributes['data-bypass'].value) {
+                        case 'False':
+                            falseInput.prop('checked', true)
+                            break
+                        case 'True':
+                            trueInput.prop('checked', true)
+                            break
+                        default:
+                            break
+                    }
+                }
+                if (event.target.attributes['data-service'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Service')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const firstSelectionCol6 = $('<div class="col-6" />')
+                    const inInput = $('<input type="radio" name="service" id="in" />')
+                    const inLabel = $('<label for="in" />').html('In')
+                    const secondSelectionCol6 = $('<div class="col-6" />')
+                    const outInput = $('<input type="radio" name="service" id="out" />')
+                    const outLabel = $('<label for="out" />').html('Out')
+                    titleCol12.append(h4).appendTo(title)
+                    firstSelectionCol6.append(inInput).append(inLabel).appendTo(selection)
+                    secondSelectionCol6.append(outInput).append(outLabel).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                    switch (event.target.attributes['data-service'].value) {
+                        case 'In':
+                            inInput.prop('checked', true)
+                            break
+                        case 'Out':
+                            outInput.prop('checked', true)
+                            break
+                        default:
+                            break
+                    }
+                }
+                if (event.target.attributes['data-recloser'].value) {
+                    const box = $('<div class="row interlock-option-box" />')
+                    const boxCol12 = $('<div class="col-12" />')
+                    const title = $('<div class="row interlock-option-title" />')
+                    const titleCol12 = $('<div class="col-12" />')
+                    const h4 = $('<h4 />').html('Recloser')
+                    const selection = $('<div class="row interlock-option-selection" />')
+                    const firstSelectionCol6 = $('<div class="col-6" />')
+                    const offInput = $('<input type="radio" name="recloser" id="off" />')
+                    const offLabel = $('<label for="off" />').html('Off')
+                    const secondSelectionCol6 = $('<div class="col-6" />')
+                    const onInput = $('<input type="radio" name="recloser" id="on" />')
+                    const onLabel = $('<label for="on" />').html('On')
+                    titleCol12.append(h4).appendTo(title)
+                    firstSelectionCol6.append(offInput).append(offLabel).appendTo(selection)
+                    secondSelectionCol6.append(onInput).append(onLabel).appendTo(selection)
+                    boxCol12.append(title).append(selection).appendTo(box)
+                    $('#features').append(box)
+                    switch (event.target.attributes['data-recloser'].value) {
+                        case 'Off':
+                            offInput.prop('checked', true)
+                            break
+                        case 'On':
+                            onInput.prop('checked', true)
+                            break
+                        default:
+                            break
+                    }
+                }
+                $('body').addClass('control-sidebar-slide-open')
+            }, waitTime)
+            return false
+        })
+
+        const elementType = {
+            LineType1: 0,
+            LineType2: 1,
+            LineType3: 2,
+            LineType4: 3,
+            BridgeLine: 4,
+            EntranceLine: 5,
+            ExitLine: 6,
+            BusLine: 7,
+            Disconnector: 8,
+            BreakerType1: 9,
+            BreakerType2: 10,
+            TransType1: 11,
+            TransType2: 12,
+            TransPart: 13,
+            Generator: 14,
+            Reactor: 15,
+            Earth: 16,
+            OpenLine: 17,
+            CloseLine: 18,
+            Not: 19,
+            And: 20,
+            Or: 21,
+            Xor: 22,
+            Nand: 23,
+            Nor: 24,
+            Xnor: 25
+        }
+
+        const color = {
+            Black: 0,
+            Yellow: 1,
+            Orange: 2,
+            Blue: 3,
+            Green: 4,
+            Red: 5,
+            Purple: 6
+        }
+
+        const voltagesLightColor = {
+            [color.Black]: '#4B4B4B',
+            [color.Yellow]: '#FFFF86',
+            [color.Orange]: '#FFB15E',
+            [color.Blue]: '#3D78FF',
+            [color.Green]: '#88FF5C',
+            [color.Red]: '#FF6565',
+            [color.Purple]: '#FF76FF'
+        }
+
+        const voltagesDarkColor = {
+            [color.Black]: '#000000',
+            [color.Yellow]: '#FFF700',
+            [color.Orange]: '#C24100',
+            [color.Blue]: '#0000FF',
+            [color.Green]: '#00FF00',
+            [color.Red]: '#FF0000',
+            [color.Purple]: '#FF00FF'
+        }
+
+        const direction = {
+            Top: 0,
+            Right: 1,
+            Bottom: 2,
+            Left: 3
+        }
+
+        const oppositeDirection = {
+            [direction.Top]: direction.Bottom,
+            [direction.Right]: direction.Left,
+            [direction.Bottom]: direction.Top,
+            [direction.Left]: direction.Right
+        }
+
+        const status = {
+            Open: 0,
+            Close: 1
+        }
+
+        let postRaw, interlockRaw
+        let routeElementsShouldBeOpened = [], entranceLineFound
+        let interlockComputationalElements = []
+
+        getOpenElementSurroundings = surrounding => {
+            // Check the surrounding element status
+            if (!surrounding.element.status) {
+                // Toggle the element
+                closeElement(surrounding.element)
+            }
+            // Get the element available directions
+            const directions = getDirections(surrounding.element)
+            // Check if there're any directions
+            if (directions.length <= 0) {
+                return []
+            }
+            // Declare surroundings variable
+            const surroundings = []
+            // Set current location
+            const currentLocation =  [surrounding.element.locX, surrounding.element.locY]
+            // Declare some variables to use them later
+            let tempCurrentLocation
+            let element, isBridgeLine, isInline
+            // Check ignore direction and if the top direction's included
+            if (surrounding.ignoreDirection != direction.Top &&
+                directions.includes(direction.Top)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get top element location
+                    tempCurrentLocation = getTopElementLocation(tempCurrentLocation)
+                    // Get top element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the top element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the top element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Top])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the top element exists
+                if (element) {
+                    // Check if the top element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the top element status's open
+                        if (!element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Top]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    } else {
+                        // Check the top element type code which its status's open and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            checkSurroundingStatusToClose(element) &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Top]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check ignore direction and if the right direction's included
+            if (surrounding.ignoreDirection != direction.Right &&
+                directions.includes(direction.Right)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get right element location
+                    tempCurrentLocation = getRightElementLocation(tempCurrentLocation)
+                    // Get right element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the right element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the right element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the right element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Right])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the right element exists
+                if (element) {
+                    // Check if the right element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the right element status's open
+                        if (!element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Right]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    } else {
+                        // Check the right element type code which its status's open and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            checkSurroundingStatusToClose(element) &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Right]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check ignore direction and if the bottom direction's included
+            if (surrounding.ignoreDirection != direction.Bottom &&
+                directions.includes(direction.Bottom)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get bottom element location
+                    tempCurrentLocation = getBottomElementLocation(tempCurrentLocation)
+                    // Get bottom element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the bottom element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the bottom element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the bottom element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Bottom])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the bottom element exists
+                if (element) {
+                    // Check if the bottom element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the bottom element status's open
+                        if (!element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Bottom]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    } else {
+                        // Check the bottom element type code which its status's open and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            checkSurroundingStatusToClose(element) &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Bottom]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check ignore direction and if the left direction's included
+            if (surrounding.ignoreDirection != direction.Left &&
+                directions.includes(direction.Left)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get left element location
+                    tempCurrentLocation = getLeftElementLocation(tempCurrentLocation)
+                    // Get left element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the left element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the left element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the left element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Left])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the left element exists
+                if (element) {
+                    // Check if the left element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the left element status's open
+                        if (!element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Left]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    } else {
+                        // Check the left element type code which its status's open and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            checkSurroundingStatusToClose(element) &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Left]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Return surroundings
+            return surroundings
+        }
+
+        getCloseElementSurroundings = surrounding => {
+            // Check if the element's not repetitive
+            if (routeElementsShouldBeOpened[routeElementsShouldBeOpened.length - 1].some(e => e.locX == surrounding.element.locX && e.locY == surrounding.element.locY)) {
+                return []
+            }
+            // Add the surrounding element to route elements should be opened global variable
+            routeElementsShouldBeOpened[routeElementsShouldBeOpened.length - 1].push(surrounding.element)
+            // Get the element available directions
+            const directions = getDirections(surrounding.element)
+            // Check if there're any directions
+            if (directions.length <= 0) {
+                return []
+            }
+            // Declare surroundings variable
+            const surroundings = []
+            // Set current location
+            const currentLocation = [surrounding.element.locX, surrounding.element.locY]
+            // Declare some variables to use them later
+            let tempCurrentLocation
+            let element, isBridgeLine, isInline
+            // Check ignore direction and if the top direction's included
+            if (surrounding.ignoreDirection != direction.Top &&
+                directions.includes(direction.Top)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get top element location
+                    tempCurrentLocation = getTopElementLocation(tempCurrentLocation)
+                    // Get top element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the top element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Top])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the top element exists
+                if (element) {
+                    // Check if the top element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the top element status's close
+                        if (element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Top]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the top element's entrance line with correct status and rotation
+                    } else if (element.typeCode == elementType.EntranceLine && element.status && isInline) {
+                        // Set entrance line found global variable to true
+                        entranceLineFound = true
+                        // Clear saved route elements should be opened
+                        routeElementsShouldBeOpened.pop()
+                    } else {
+                        // Check the top element type code which its status's close and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            element.status &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Top]
+                            }
+                            // Add the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check ignore direction and if the right direction's included
+            if (surrounding.ignoreDirection != direction.Right &&
+                directions.includes(direction.Right)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get right element location
+                    tempCurrentLocation = getRightElementLocation(tempCurrentLocation)
+                    // Get right element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the right element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Right])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the right element exists
+                if (element) {
+                    // Check if the right element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the right element status's close
+                        if (element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Right]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the right element's entrance line with correct status and rotation
+                    } else if (element.typeCode == elementType.EntranceLine && element.status && isInline) {
+                        // Set entrance line found global variable to true
+                        entranceLineFound = true
+                        // Clear saved route elements should be opened
+                        routeElementsShouldBeOpened.pop()
+                    } else {
+                        // Check the right element type code which its status's close and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            element.status &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Right]
+                            }
+                            // Add the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check ignore direction and if the bottom direction's included
+            if (surrounding.ignoreDirection != direction.Bottom &&
+                directions.includes(direction.Bottom)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get bottom element location
+                    tempCurrentLocation = getBottomElementLocation(tempCurrentLocation)
+                    // Get bottom element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the bottom element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Bottom])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the bottom element exists
+                if (element) {
+                    // Check if the bottom element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the bottom element status's close
+                        if (element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Bottom]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the bottom element's entrance line with correct status and rotation
+                    } else if (element.typeCode == elementType.EntranceLine && element.status && isInline) {
+                        // Set entrance line found global variable to true
+                        entranceLineFound = true
+                        // Clear saved route elements should be opened
+                        routeElementsShouldBeOpened.pop()
+                    } else {
+                        // Check the bottom element type code which its status's close and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            element.status &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Bottom]
+                            }
+                            // Add the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check ignore direction and if the left direction's included
+            if (surrounding.ignoreDirection != direction.Left &&
+                directions.includes(direction.Left)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get left element location
+                    tempCurrentLocation = getLeftElementLocation(tempCurrentLocation)
+                    // Get left element
+                    element = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the left element exists
+                    if (!element) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = element.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(element).includes(oppositeDirection[direction.Left])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the left element exists
+                if (element) {
+                    // Check if the left element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the left element status's close
+                        if (element.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Left]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the left element's entrance line with correct status and rotation
+                    } else if (element.typeCode == elementType.EntranceLine && element.status && isInline) {
+                        // Set entrance line found global variable to true
+                        entranceLineFound = true
+                        // Clear saved route elements should be opened
+                        routeElementsShouldBeOpened.pop()
+                    } else {
+                        // Check the left element type code which its status's close and direction's inline
+                        if (checkNextToEachOtherElements(surrounding.element, element) &&
+                            element.status &&
+                            isInline) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': element,
+                                'ignoreDirection': oppositeDirection[direction.Left]
+                            }
+                            // Add the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Return surroundings
+            return surroundings
+        }
+
+        getSelectedOpenElementSurroundings = element => {
+            // Close the element
+            closeElement(element)
+            // Get the element available directions
+            const directions = getDirections(element)
+            // Check if there're any directions
+            if (directions.length <= 0) {
+                return []
+            }
+            // Declare surroundings variable
+            const surroundings = []
+            // Set current location
+            const currentLocation = [element.locX, element.locY]
+            // Declare some variables to use them later
+            let tempCurrentLocation
+            let el, isBridgeLine, isInline
+            let electricalRoutesCounter = 0
+            // Check if the top direction's included
+            if (directions.includes(direction.Top)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get top element location
+                    tempCurrentLocation = getTopElementLocation(tempCurrentLocation)
+                    // Get top element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the top element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the top element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Top])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the top element exists
+                if (el) {
+                    // Check if the top element's bridge line
+                    if (isBridgeLine ||
+                        (checkNextToEachOtherElements(element, el) &&
+                        isInline)) {
+                        // Check if the top element status's close
+                        if (el.status) {
+                            // Increase electrical routes counter
+                            electricalRoutesCounter++
+                        } else {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Top]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check if the right direction's included
+            if (directions.includes(direction.Right)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get right element location
+                    tempCurrentLocation = getRightElementLocation(tempCurrentLocation)
+                    // Get right element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the right element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the right element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the right element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Right])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the right element exists
+                if (el) {
+                    // Check if the right element's bridge line
+                    if (isBridgeLine ||
+                        (checkNextToEachOtherElements(element, el) &&
+                        isInline)) {
+                        // Check if the right element status's close
+                        if (el.status) {
+                            // Increase electrical routes counter
+                            electricalRoutesCounter++
+                        } else {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Right]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check if the bottom direction's included
+            if (directions.includes(direction.Bottom)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get bottom element location
+                    tempCurrentLocation = getBottomElementLocation(tempCurrentLocation)
+                    // Get bottom element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the bottom element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the bottom element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the bottom element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Bottom])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the bottom element exists
+                if (el) {
+                    // Check if the bottom element's bridge line
+                    if (isBridgeLine ||
+                        (checkNextToEachOtherElements(element, el) &&
+                        isInline)) {
+                        // Check if the bottom element status's close
+                        if (el.status) {
+                            // Increase electrical routes counter
+                            electricalRoutesCounter++
+                        } else {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Bottom]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check if the left direction's included
+            if (directions.includes(direction.Left)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get left element location
+                    tempCurrentLocation = getLeftElementLocation(tempCurrentLocation)
+                    // Get left element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the left element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the left element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the left element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Left])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the left element exists
+                if (el) {
+                    // Check if the left element's bridge line
+                    if (isBridgeLine ||
+                        (checkNextToEachOtherElements(element, el) &&
+                        isInline)) {
+                        // Check if the left element status's close
+                        if (el.status) {
+                            // Increase electrical routes counter
+                            electricalRoutesCounter++
+                        } else {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Left]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    }
+                }
+            }
+            // Check if there're any electrical routes and the element's not entrance line
+            if (electricalRoutesCounter <= 0 &&
+                element.typeCode != elementType.EntranceLine) {
+                return []
+            }
+            // Return surroundings
+            return surroundings
+        }
+
+        getSelectedCloseElementSurroundings = element => {
+            // Open the element
+            openElement(element)
+            // Get the element available directions
+            const directions = getDirections(element)
+            // Check if there're any directions
+            if (directions.length <= 0) {
+                return []
+            }
+            // Declare surroundings variable
+            const surroundings = []
+            // Set current location
+            const currentLocation = [element.locX, element.locY]
+            // Declare some variables to use them later
+            let tempCurrentLocation
+            let el, isBridgeLine, isInline
+            // Check if the top direction's included
+            if (directions.includes(direction.Top)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get top element location
+                    tempCurrentLocation = getTopElementLocation(tempCurrentLocation)
+                    // Get top element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the top element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Top])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the top element exists
+                if (el) {
+                    // Check if the top element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the top element status's close
+                        if (el.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Top]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the top element's entrance line with correct status and rotation
+                    } else if (el.typeCode == elementType.EntranceLine && el.status && isInline) {
+                        return []
+                    }
+
+                    // Check the top element type code which its status's close and direction's inline
+                    if (checkNextToEachOtherElements(element, el) &&
+                        el.status &&
+                        isInline) {
+                        // Declare surrounding object
+                        const surrounding = {
+                            'element': el,
+                            'ignoreDirection': oppositeDirection[direction.Top]
+                        }
+                        // Add the surrounding object to surroundings array
+                        surroundings.push(surrounding)
+                    }
+                }
+            }
+            // Check if the right direction's included
+            if (directions.includes(direction.Right)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get right element location
+                    tempCurrentLocation = getRightElementLocation(tempCurrentLocation)
+                    // Get right element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the right element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Right])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the right element exists
+                if (el) {
+                    // Check if the right element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the right element status's close
+                        if (el.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Right]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the right element's entrance line with correct status and rotation
+                    } else if (el.typeCode == elementType.EntranceLine && el.status && isInline) {
+                        return []
+                    }
+                    // Check the right element type code which its status's close and direction's inline
+                    if (checkNextToEachOtherElements(element, el) &&
+                        el.status &&
+                        isInline) {
+                        // Declare surrounding object
+                        const surrounding = {
+                            'element': el,
+                            'ignoreDirection': oppositeDirection[direction.Right]
+                        }
+                        // Add the surrounding object to surroundings array
+                        surroundings.push(surrounding)
+                    }
+                }
+            }
+            // Check if the bottom direction's included
+            if (directions.includes(direction.Bottom)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get bottom element location
+                    tempCurrentLocation = getBottomElementLocation(tempCurrentLocation)
+                    // Get bottom element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the bottom element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Bottom])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the bottom element exists
+                if (el) {
+                    // Check if the bottom element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the bottom element status's close
+                        if (el.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Bottom]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the bottom element's entrance line with correct status and rotation
+                    } else if (el.typeCode == elementType.EntranceLine && el.status && isInline) {
+                        return []
+                    }
+                    // Check the bottom element type code which its status's close and direction's inline
+                    if (checkNextToEachOtherElements(element, el) &&
+                        el.status &&
+                        isInline) {
+                        // Declare surrounding object
+                        const surrounding = {
+                            'element': el,
+                            'ignoreDirection': oppositeDirection[direction.Bottom]
+                        }
+                        // Add the surrounding object to surroundings array
+                        surroundings.push(surrounding)
+                    }
+                }
+            }
+            // Check if the left direction's included
+            if (directions.includes(direction.Left)) {
+                // Reset temp current location
+                tempCurrentLocation = currentLocation
+                do {
+                    // Get left element location
+                    tempCurrentLocation = getLeftElementLocation(tempCurrentLocation)
+                    // Get left element
+                    el = getPostElementByLocationRegex(tempCurrentLocation)
+                    // Check if the left element exists
+                    if (!el) {
+                        break
+                    }
+                    // Check if the element's bridge line
+                    isBridgeLine = el.typeCode == elementType.BridgeLine
+                    // Check if the top element direction's inline
+                    isInline = getDirections(el).includes(oppositeDirection[direction.Left])
+                // Do same work untill reaching an bridge line with inline rotation or an element which's not an bridge line
+                } while (isBridgeLine && !isInline)
+                // Check if the left element exists
+                if (el) {
+                    // Check if the left element's bridge line
+                    if (isBridgeLine) {
+                        // Check if the left element status's close
+                        if (el.status) {
+                            // Declare surrounding object
+                            const surrounding = {
+                                'element': el,
+                                'ignoreDirection': oppositeDirection[direction.Left]
+                            }
+                            // Push the surrounding object to surroundings array
+                            surroundings.push(surrounding)
+                        }
+                    // Check if the left element's entrance line with correct status and rotation
+                    } else if (el.typeCode == elementType.EntranceLine && el.status && isInline) {
+                        return []
+                    }
+                    // Check the left element type code which its status's close and direction's inline
+                    if (checkNextToEachOtherElements(element, el) &&
+                        el.status &&
+                        isInline) {
+                        // Declare surrounding object
+                        const surrounding = {
+                            'element': el,
+                            'ignoreDirection': oppositeDirection[direction.Left]
+                        }
+                        // Add the surrounding object to surroundings array
+                        surroundings.push(surrounding)
+                    }
+                }
+            }
+            // Return surroundings
+            return surroundings
+        }
+
+        getOpenElementSurroundingsRecursive = surrounding => {
+            // Find more surroundings
+            getOpenElementSurroundings(surrounding).forEach(sur => {
+                // Recursive call
+                getOpenElementSurroundingsRecursive(sur)
+            })
+        }
+
+        getCloseElementSurroundingsRecursive = surrounding => {
+            // Find more surroundings
+            getCloseElementSurroundings(surrounding).forEach(sur => {
+                // Check if an entrance line found
+                if (!entranceLineFound) {
+                    // Recursive call
+                    getCloseElementSurroundingsRecursive(sur)
+                }
+            })
+        }
+
+        checkNextToEachOtherElements = (element, surrounding) => {
+            const nonPutTogetherElements = [
+                elementType.Disconnector,
+                elementType.BreakerType1,
+                elementType.BreakerType2,
+                elementType.TransType1,
+                elementType.TransType2,
+                elementType.TransPart,
+                elementType.Generator
+            ]
+            if (nonPutTogetherElements.includes(element.typeCode) &&
+                nonPutTogetherElements.includes(surrounding.typeCode)) {
+                return false
+            }
+            return true
+        }
+
+        checkNextToEachOtherInterlocks = (element, surrounding) => {
+            const nonPutTogetherElements = [
+                elementType.EntranceLine,
+                elementType.ExitLine,
+                elementType.BusLine,
+                elementType.Disconnector,
+                elementType.BreakerType1,
+                elementType.BreakerType2
+            ]
+            if (nonPutTogetherElements.includes(element.typeCode) &&
+                nonPutTogetherElements.includes(surrounding.typeCode)) {
+                return false
+            }
+            return true
+        }
+
+        checkSurroundingStatusToClose = surrounding => {
+            switch (surrounding.typeCode) {
+                case elementType.LineType1:
+                case elementType.LineType2:
+                case elementType.LineType3:
+                case elementType.LineType4:
+                case elementType.BridgeLine:
+                case elementType.EntranceLine:
+                case elementType.ExitLine:
+                case elementType.BusLine:
+                case elementType.TransType1:
+                case elementType.TransType2:
+                case elementType.TransPart:
+                case elementType.Generator:
+                case elementType.Reactor:
+                case elementType.Earth:
+                    return surrounding.status == status.Open
+                case elementType.Disconnector:
+                case elementType.BreakerType1:
+                case elementType.BreakerType2:
+                    return surrounding.status == status.Close
+                default:
+                    return false
+            }
+        }
+
+        getInterlockDirections = element => {
+            const possibleRoutes = []
+            switch (element.typeCode) {
+                case elementType.LineType1:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Bottom)
+                            break
+                        case 90:
+                        case -270:
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Right, direction.Left)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.LineType2:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                            possibleRoutes.push(direction.Bottom, direction.Left)
+                            break
+                        case 90:
+                        case -270:
+                            possibleRoutes.push(direction.Left, direction.Top)
+                            break
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Right)
+                            break
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Right, direction.Bottom)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.LineType3:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                            possibleRoutes.push(direction.Bottom, direction.Left, direction.Top)
+                            break
+                        case 90:
+                        case -270:
+                            possibleRoutes.push(direction.Left, direction.Top, direction.Right)
+                            break
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Right, direction.Bottom)
+                            break
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Right, direction.Bottom, direction.Left)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.LineType4:
+                case elementType.EntranceLine:
+                case elementType.ExitLine:
+                case elementType.BusLine:
+                case elementType.Disconnector:
+                case elementType.BreakerType1:
+                case elementType.BreakerType2:
+                case elementType.OpenLine:
+                case elementType.CloseLine:
+                case elementType.Not:
+                case elementType.And:
+                case elementType.Or:
+                case elementType.Xor:
+                case elementType.Nand:
+                case elementType.Nor:
+                case elementType.Xnor:
+                    possibleRoutes.push(direction.Top, direction.Right, direction.Bottom, direction.Left)
+                    break
+                default:
+                    break
+            }
+            return possibleRoutes
+        }
+
+        getDirections = element => {
+            const possibleRoutes = []
+            switch (element.typeCode) {
+                case elementType.LineType1:
+                case elementType.BridgeLine:
+                case elementType.EntranceLine:
+                case elementType.ExitLine:
+                case elementType.BusLine:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Bottom)
+                            break
+                        case 90:
+                        case -270:
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Right, direction.Left)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.LineType2:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                            possibleRoutes.push(direction.Bottom, direction.Left)
+                            break
+                        case 90:
+                        case -270:
+                            possibleRoutes.push(direction.Left, direction.Top)
+                            break
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Right)
+                            break
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Right, direction.Bottom)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.LineType3:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                            possibleRoutes.push(direction.Bottom, direction.Left, direction.Top)
+                            break
+                        case 90:
+                        case -270:
+                            possibleRoutes.push(direction.Left, direction.Top, direction.Right)
+                            break
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Right, direction.Bottom)
+                            break
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Right, direction.Bottom, direction.Left)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.LineType4:
+                case elementType.Disconnector:
+                case elementType.BreakerType1:
+                case elementType.BreakerType2:
+                case elementType.Generator:
+                    possibleRoutes.push(direction.Top, direction.Right, direction.Bottom, direction.Left)
+                    break
+                case elementType.TransType1:
+                case elementType.TransPart:
+                case elementType.Reactor:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Bottom)
+                            break
+                        case 90:
+                        case -270:
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Left, direction.Right)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.TransType2:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                            possibleRoutes.push(direction.Left, direction.Top, direction.Bottom)
+                            break
+                        case 90:
+                        case -270:
+                            possibleRoutes.push(direction.Left, direction.Top, direction.Right)
+                            break
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Top, direction.Right, direction.Bottom)
+                            break
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Left, direction.Right, direction.Bottom)
+                            break
+                        default:
+                            break
+                    }
+                    break
+                case elementType.Earth:
+                    switch (element.rotZ) {
+                        case 0:
+                        case 360:
+                        case -360:
+                            possibleRoutes.push(direction.Right)
+                            break
+                        case 90:
+                        case -270:
+                            possibleRoutes.push(direction.Bottom)
+                            break
+                        case 180:
+                        case -180:
+                            possibleRoutes.push(direction.Left)
+                            break
+                        case 270:
+                        case -90:
+                            possibleRoutes.push(direction.Top)
+                            break
+                        default:
+                            break
+                    }
+                default:
+                    break
+            }
+            return possibleRoutes
+        }
+
+        changeStatus = (locX, locY) => {
+            // Show dialog
+            if (confirm('آیا از تغییر وضعیت اطمینان دارید؟')) {
+                // Send a get request to retrieve latest post changes by the user
+                $.get('/UserPost/GetPostChangesRaw?postGuid=@TempData["PostGuid"]', postRawValue => {
+                    // Update post changes global variable
+                    postRaw = postRawValue
+                    // Get the selected element
+                    const selectedElement = getPostElementByLocationRegex([locX, locY])
+                    // Check if the element exists
+                    if (!selectedElement) {
+                        throw 'The selected element not found!'
+                    }
+                    // Check if the element's got interlock
+                    if (selectedElement.interlockGuid) {
+                        // Send a get request to retrieve the element interlock
+                        $.get('/Interlock?interlockGuid=' + selectedElement.interlockGuid, interlockRawValue => {
+                            // Update interlock global variable
+                            interlockRaw = interlockRawValue
+                            // Declare interlock result variable
+                            let interlockResult
+                            // Specify interlock element type code
+                            const interlockElementTypeCode = !selectedElement.status ? elementType.CloseLine : elementType.OpenLine
+                            // Get interlock element
+                            const interlockElement = getInterlockElementByTypeCodeRegex(interlockElementTypeCode)
+                            // Check if the interlock element exists
+                            if (interlockElement) {
+                                // Declare surrounding object
+                                const surrounding = {
+                                    'element': interlockElement,
+                                    'ignoreDirection': null
+                                }
+                                // Check surrounding element interlocks
+                                checkInterlock(surrounding)
+                                // Check if there's only one interlock computational element left
+                                if (interlockComputationalElements.length > 1) {
+                                    // Empty interlock computational elements global variable
+                                    interlockComputationalElements = []
+                                    // Throw exeption
+                                    throw 'Not any operator exists!'
+                                }
+                                // Get the last interlock computational element
+                                const interlockComputationalElement = interlockComputationalElements.pop()
+                                // Check if the interlock computational element's not its result
+                                if (typeof interlockComputationalElement == 'object') {
+                                    // Check if the interlock computational element status equals its status in the post
+                                    if (interlockComputationalElement.status == getPostElementByNameRegex(interlockComputationalElement.name).status) {
+                                        // Set interlock result to true
+                                        interlockResult = 1
+                                    } else {
+                                        // Set interlock result to false
+                                        interlockResult = 0
+                                    }
+                                } else {
+                                    // Set interlock result to the interlock computational element result
+                                    interlockResult = interlockComputationalElement
+                                }
+                            } else {
+                                // Set interlock result to true
+                                interlockResult = 1
+                            }
+                            // Check if the interlock result's true
+                            if (interlockResult) {
+                                // Check the element status
+                                if (!selectedElement.status) {
+                                    // Find the selected open status element surroundings
+                                    getSelectedOpenElementSurroundings(selectedElement).forEach(surrounding => {
+                                        // Find the next surroundings
+                                        getOpenElementSurroundingsRecursive(surrounding)
+                                    })
+                                } else {
+                                    // Find the selected close status element surroundings
+                                    getSelectedCloseElementSurroundings(selectedElement).forEach(surrounding => {
+                                        // Add an empty array to route elements should be opened global variable to find the mentioned routes
+                                        routeElementsShouldBeOpened.push([])
+                                        // Reset entrance line found global variable
+                                        entranceLineFound = false
+                                        // Find the next surroundings
+                                        getCloseElementSurroundingsRecursive(surrounding)
+                                    })
+                                    // Open route elements
+                                    for (let i = 0; i < routeElementsShouldBeOpened.length; i++) {
+                                        for (let j = 0; j < routeElementsShouldBeOpened[i].length; j++) {
+                                            openElement(routeElementsShouldBeOpened[i][j])
+                                        }
+                                    }
+                                    // Reset route elements should be opened global variable
+                                    routeElementsShouldBeOpened = []
+                                }
+                                // Update the post by sending a put request to the server
+                                updatePost()
+                                // Reset post changes global variable
+                                postRaw = null
+                            } else {
+                                // Alert the interlock result's false
+                                alert('لطفا اینترلاک ها را بررسی کنید.')
+                            }
+                        })
+                    } else {
+                        // Check the element status
+                        if (!selectedElement.status) {
+                            // Find the selected open status element surroundings
+                            getSelectedOpenElementSurroundings(selectedElement).forEach(surrounding => {
+                                // Find the next surroundings
+                                getOpenElementSurroundingsRecursive(surrounding)
+                            })
+                        } else {
+                            // Find the selected close status element surroundings
+                            getSelectedCloseElementSurroundings(selectedElement).forEach(surrounding => {
+                                // Add an empty array to route elements should be opened global variable to find the mentioned routes
+                                routeElementsShouldBeOpened.push([])
+                                // Reset entrance line found global variable
+                                entranceLineFound = false
+                                // Find the next surroundings
+                                getCloseElementSurroundingsRecursive(surrounding)
+                            })
+                            // Open route elements
+                            for (let i = 0; i < routeElementsShouldBeOpened.length; i++) {
+                                for (let j = 0; j < routeElementsShouldBeOpened[i].length; j++) {
+                                    openElement(routeElementsShouldBeOpened[i][j])
+                                }
+                            }
+                            // Reset route elements should be opened global variable
+                            routeElementsShouldBeOpened = []
+                        }
+                        // Update the post by sending a put request to the server
+                        updatePost()
+                        // Reset post changes global variable
+                        postRaw = null
+                    }
+                })
+            }
+        }
+
+        checkInterlock = surrounding => {
+            // Check if the element's interlock computational
+            if (isInterlockComputationalElement(surrounding.element.typeCode)) {
+                interlockComputationalElements.push(surrounding.element)
+            }
+            // Get the element available directions
+            const directions = getInterlockDirections(surrounding.element)
+            // Check if there're any directions
+            if (directions.length <= 0) {
+                return []
+            }
+            // Declare surroundings variable
+            const surroundings = []
+            // Set current location
+            const currentLocation = [surrounding.element.locX, surrounding.element.locY]
+            // Declare some variables to use them later
+            let tempCurrentLocation
+            let element
+            // Check ignore direction and if the top direction's included
+            if (surrounding.ignoreDirection != direction.Top &&
+                directions.includes(direction.Top)) {
+                // Get top element location
+                tempCurrentLocation = getTopElementLocation(currentLocation)
+                // Get top element
+                element = getInterlockElementByLocationRegex(tempCurrentLocation)
+                // Check if the top element exists and if it exists check its type code and rotation
+                if (element &&
+                    checkNextToEachOtherInterlocks(surrounding.element, element) &&
+                    getInterlockDirections(element).includes(oppositeDirection[direction.Top])) {
+                    // Declare surrounding object
+                    const surrounding = {
+                        'element': element,
+                        'ignoreDirection': oppositeDirection[direction.Top]
+                    }
+                    // Push the surrounding object to surroundings array
+                    surroundings.push(surrounding)
+                }
+            }
+            // Check ignore direction and if the right direction's included
+            if (surrounding.ignoreDirection != direction.Right &&
+                directions.includes(direction.Right)) {
+                // Get right element location
+                tempCurrentLocation = getRightElementLocation(currentLocation)
+                // Get right element
+                element = getInterlockElementByLocationRegex(tempCurrentLocation)
+                // Check if the right element exists and if it exists check its type code and rotation
+                if (element &&
+                    checkNextToEachOtherInterlocks(surrounding.element, element) &&
+                    getInterlockDirections(element).includes(oppositeDirection[direction.Right])) {
+                    // Declare surrounding object
+                    const surrounding = {
+                        'element': element,
+                        'ignoreDirection': oppositeDirection[direction.Right]
+                    }
+                    // Push the surrounding object to surroundings array
+                    surroundings.push(surrounding)
+                }
+            }
+            // Check ignore direction and if the bottom direction's included
+            if (surrounding.ignoreDirection != direction.Bottom &&
+                directions.includes(direction.Bottom)) {
+                // Get bottom element location
+                tempCurrentLocation = getBottomElementLocation(currentLocation)
+                // Get bottom element
+                element = getInterlockElementByLocationRegex(tempCurrentLocation)
+                // Check if the bottom element exists and if it exists check its type code and rotation
+                if (element &&
+                    checkNextToEachOtherInterlocks(surrounding.element, element) &&
+                    getInterlockDirections(element).includes(oppositeDirection[direction.Bottom])) {
+                    // Declare surrounding object
+                    const surrounding = {
+                        'element': element,
+                        'ignoreDirection': oppositeDirection[direction.Bottom]
+                    }
+                    // Push the surrounding object to surroundings array
+                    surroundings.push(surrounding)
+                }
+            }
+            // Check ignore direction and if the left direction's included
+            if (surrounding.ignoreDirection != direction.Left &&
+                directions.includes(direction.Left)) {
+                // Get left element location
+                tempCurrentLocation = getLeftElementLocation(currentLocation)
+                // Get left element
+                element = getInterlockElementByLocationRegex(tempCurrentLocation)
+                // Check if the left element exists and if it exists check its type code and rotation
+                if (element &&
+                    checkNextToEachOtherInterlocks(surrounding.element, element) &&
+                    getInterlockDirections(element).includes(oppositeDirection[direction.Left])) {
+                    // Declare surrounding object
+                    const surrounding = {
+                        'element': element,
+                        'ignoreDirection': oppositeDirection[direction.Left]
+                    }
+                    // Push the surrounding object to surroundings array
+                    surroundings.push(surrounding)
+                }
+            }
+            // Check more interlock elements
+            surroundings.forEach(sur => {
+                // Recursive call
+                checkInterlock(sur)
+                // Check if the element's logic
+                if (isLogic(sur.element)) {
+                    // Declare operands variable
+                    let operands = []
+                    // Find operands
+                    while (!isLogic(interlockComputationalElements[interlockComputationalElements.length - 1])) {
+                        // Get the last interlock computational element
+                        const interlockComputationalElement = interlockComputationalElements.pop()
+                        // Check if the interlock computational element's not its result
+                        if (typeof interlockComputationalElement == 'object') {
+                            // Check if the interlock computational element status equals its status in the post
+                            if (interlockComputationalElement.status == getPostElementByNameRegex(interlockComputationalElement.name).status) {
+                                // Push true to operands array
+                                operands.push(1)
+                            } else {
+                                // Push false to operands array
+                                operands.push(0)
+                            }
+                        } else {
+                            // Push the interlock computational element result to operands array
+                            operands.push(interlockComputationalElement)
+                        }
+                    }
+                    // Decalre result variable
+                    let result
+                    // Get operator
+                    let operator = interlockComputationalElements.pop().typeCode
+                    // Check if the operator's not
+                    if (operator == elementType.Not) {
+                        // Check if there aren't more than one operand for not operator
+                        if (operands.length > 1) {
+                            throw 'More than one input exists for not operator!'
+                        }
+                        // Set result to operand not
+                        result = operands[0] == 0 ? 1 : 0
+                        // Push result to interlock computational elements array
+                        interlockComputationalElements.push(result)
+                        return
+                    }
+                    // Get reducer function
+                    const reducer = getReducer(operator)
+                    // Set result to logical calculation
+                    result = operands.reduce(reducer)
+                    // Check if the result needs to be not
+                    switch (operator) {
+                        case elementType.Nand:
+                            result = result == 0 ? 1 : 0
+                        case elementType.Nor:
+                            result = result == 0 ? 1 : 0
+                        case elementType.Xnor:
+                            result = result == 0 ? 1 : 0
+                        default:
+                            result = result
+                    }
+                    // Push result to interlock computational elements array
+                    interlockComputationalElements.push(result)
+                }
+            })
+        }
+
+        getReducer = operator => {
+            switch (operator) {
+                case elementType.And:
+                case elementType.Nand:
+                    return (accumulator, currentValue) => accumulator & currentValue
+                case elementType.Or:
+                case elementType.Nor:
+                    return (accumulator, currentValue) => accumulator | currentValue
+                case elementType.Xor:
+                case elementType.Xnor:
+                    return (accumulator, currentValue) => accumulator ^ currentValue
+                default:
+                    return null
+            }
+        }
+
+        isInterlockComputationalElement = element => {
+            switch (element) {
+                case elementType.EntranceLine:
+                case elementType.ExitLine:
+                case elementType.BusLine:
+                case elementType.Disconnector:
+                case elementType.BreakerType1:
+                case elementType.BreakerType2:
+                case elementType.Not:
+                case elementType.And:
+                case elementType.Or:
+                case elementType.Xor:
+                case elementType.Nand:
+                case elementType.Nor:
+                case elementType.Xnor:
+                    return true
+                default:
+                    return false
+            }
+        }
+
+        isLogic = element => {
+            switch (element.typeCode) {
+                case elementType.Not:
+                case elementType.And:
+                case elementType.Or:
+                case elementType.Xor:
+                case elementType.Nand:
+                case elementType.Nor:
+                case elementType.Xnor:
+                    return true
+                default:
+                    return false
+            }
+        }
+
+        updatePost = () => {
+            $.ajax({
+                method: 'PUT',
+                url: 'UserPost/Update?postGuid=@TempData["PostGuid"]',
+                dataType: 'json',
+                contentType: 'application/json',
+                data: postRaw
+            }).done(data => {
+
+            }).fail(err => {
+                console.log(err);
+            })
+        }
+
+        closeElement = element => {
+            // Close the element
+            element.status = status.Close
+            // Update element in post changes global variable
+            updateElementRegex(element)
+            // Get the element selector
+            const selector = getSelector(element)
+            // Check if the selector exists
+            if (!selector) {
+                // Failed to get the selector
+                return
+            }
+            // Check if the selector's got ring
+            if (selector.hasRing) {
+                // Check if the selector's got ring1
+                if (selector.ring1Element) {
+                    // Color the element in svg design
+                    selector.ring1Element.css(selector.attributeToColor, voltagesDarkColor[element.ring1VoltageCode])
+                }
+                // Check if the selector's got ring2
+                if (selector.ring2Element) {
+                    // Color the element in svg design
+                    selector.ring2Element.css(selector.attributeToColor, voltagesDarkColor[element.ring2VoltageCode])
+                }
+                // Check if the selector's got ring3
+                if (selector.ring3Element) {
+                    // Color the element in svg design
+                    selector.ring3Element.css(selector.attributeToColor, voltagesDarkColor[element.ring3VoltageCode])
+                }
+            } else {
+                // Color the element in svg design
+                selector.element.css(selector.attributeToColor, voltagesDarkColor[element.voltageCode])
+            }
+        }
+
+        openElement = element => {
+            // Open the element
+            element.status = status.Open
+            // Update element in post changes global variable
+            updateElementRegex(element)
+            // Get the element selector
+            const selector = getSelector(element)
+            // Check if the selector exists
+            if (!selector) {
+                // Failed to get the selector
+                return
+            }
+            // Check if the selector's got ring
+            if (selector.hasRing) {
+                // Check if the selector's got ring1
+                if (selector.ring1Element) {
+                    // Decolor the element in svg design
+                    selector.ring1Element.css(selector.attributeToColor, voltagesLightColor[element.ring1VoltageCode])
+                }
+                // Check if the selector's got ring2
+                if (selector.ring2Element) {
+                    // Decolor the element in svg design
+                    selector.ring2Element.css(selector.attributeToColor, voltagesLightColor[element.ring2VoltageCode])
+                }
+                // Check if the selector's got ring3
+                if (selector.ring3Element) {
+                    // Decolor the element in svg design
+                    selector.ring3Element.css(selector.attributeToColor, voltagesLightColor[element.ring3VoltageCode])
+                }
+            } else if (element.typeCode == elementType.Disconnector ||
+                element.typeCode == elementType.BreakerType1 ||
+                element.typeCode == elementType.BreakerType2) {
+                // Decolor the element in svg design
+                selector.element.css(selector.attributeToColor, 'transparent')
+            } else {
+                // Decolor the element in svg design
+                selector.element.css(selector.attributeToColor, voltagesLightColor[element.voltageCode])
+            }
+        }
+
+        getSelector = element => {
+            // Make the element svg design id
+            const id = element.locX + '-' + element.locY
+            // Transformers group selector in svg design
+            const transGroupSelector = $('g#' + id)
+            // Return selector by specifying the element type code
+            switch (element.typeCode) {
+                case elementType.LineType1:
+                case elementType.LineType2:
+                case elementType.LineType3:
+                case elementType.LineType4:
+                    return {
+                        'element': $('g#' + id),
+                        'hasRing': false,
+                        'attributeToColor': 'fill'
+                    }
+                case elementType.BridgeLine:
+                case elementType.Reactor:
+                    return {
+                        'element': $('g#' + id),
+                        'hasRing': false,
+                        'attributeToColor': 'stroke'
+                    }
+                case elementType.EntranceLine:
+                case elementType.ExitLine:
+                case elementType.BusLine:
+                case elementType.Disconnector:
+                case elementType.BreakerType1:
+                case elementType.BreakerType2:
+                    return {
+                        'element': $('g#' + id + ' path'),
+                        'hasRing': false,
+                        'attributeToColor': 'fill'
+                    }
+                case elementType.TransType1:
+                case elementType.TransPart:
+                    return {
+                        'ring1Element': transGroupSelector.find('path:nth-child(1)'),
+                        'ring2Element': transGroupSelector.find('path:nth-child(2)'),
+                        'hasRing': true,
+                        'attributeToColor': 'stroke'
+                    }
+                case elementType.TransType2:
+                    return {
+                        'ring1Element': transGroupSelector.find('path:nth-child(1)'),
+                        'ring2Element': transGroupSelector.find('path:nth-child(2)'),
+                        'ring3Element': transGroupSelector.find('path:nth-child(3)'),
+                        'hasRing': true,
+                        'attributeToColor': 'stroke'
+                    }
+                default:
+                    return null
+            }
+        }
+
+        updateElementRegex = element => {
+            const locX = element.locX / @Constants.elementsWidth;
+            const locY = element.locY / @Constants.elementsHeight;
+            const rotZ = element.rotZ
+            const patt = '(?:"name": "(.*)",\\s*)*"typeCode": (.*),\\s*(?:"voltageCode": (.*),\\s*)*(?:"ring1VoltageCode": (.*),\\s*)*(?:"ring2VoltageCode": (.*),\\s*)*(?:"ring3VoltageCode": (.*),\\s*)*"locX": (' + locX + '),\\s*"locY": (' + locY + '),\\s*"rotZ": (.*)\\s*"status": ([^,\\n]*)(?:,\\s*"interlockGuid": "(.*)")*'
+            const re = new RegExp(patt, 'g')
+            let str = JSON.stringify(element)
+            str = str.replace(/"locX":(\d*)/g, '"locX":' + locX)
+            str = str.replace(/"locY":(\d*)/g, '"locY":' + locY)
+            str = str.replace(/"rotZ":([\d|.|-]*)/g, '"rotZ":' + rotZ)
+            str = str.replaceAll(':', ': ')
+            str = str.replaceAll(/{|}/g, '')
+            str = str.replaceAll(',', ',\r\n\t\t\t')
+            postRaw = postRaw.replace(re, str)
+        }
+
+        getInterlockElementByTypeCodeRegex = typeCode => {
+            // Define a pattern which selects the element features
+            const patt = '(?:"name":\\s*"([^,\\n]*)",\\s*)*"typeCode":\\s*(' + typeCode + '),\\s*"locX":\\s*([^,\\n]*),\\s*"locY":\\s*([^,\\n]*),\\s*"rotZ":\\s*([^,\\n]*)(?:,\\s*"status":\\s*([^,\\n]*))*'
+            // Define regular expression object by the pattern
+            const re = new RegExp(patt, 'g')
+            // Search post changes for the element
+            const match = re.exec(interlockRaw)
+            // Check if the element exists
+            if (match) {
+                // Define an empty element object
+                let element = {}
+                // Populate the element
+                if (match[1]) {
+                    element.name = match[1]
+                }
+                element.typeCode = parseInt(match[2])
+                element.locX = parseInt(match[3]) * @Constants.elementsWidth;
+                element.locY = parseInt(match[4]) * @Constants.elementsHeight;
+                element.rotZ = Math.round(parseFloat(match[5]))
+                if (match[6]) {
+                    element.status = parseInt(match[6])
+                }
+                return element
+            }
+            return null
+        }
+
+        getInterlockElementByLocationRegex = location => {
+            // Define a pattern which selects the element features
+            const patt = '(?:"name":\\s*"([^,\\n]*)",\\s*)*"typeCode":\\s*([^,\\n]*),\\s*"locX":\\s*(' + location[0] / @Constants.elementsWidth + '),\\s*"locY":\\s*(' + location[1] / @Constants.elementsHeight + '),\\s*"rotZ":\\s*([^,\\n]*)(?:,\\s*"status":\\s*([^,\\n]*))*'
+            // Define regular expression object by the pattern
+            const re = new RegExp(patt, 'g')
+            // Search post changes for the element
+            const match = re.exec(interlockRaw)
+            // Check if the element exists
+            if (match) {
+                // Define an empty element object
+                let element = {}
+                // Populate the element
+                if (match[1]) {
+                    element.name = match[1]
+                }
+                element.typeCode = parseInt(match[2])
+                element.locX = parseInt(match[3]) * @Constants.elementsWidth;
+                element.locY = parseInt(match[4]) * @Constants.elementsHeight;
+                element.rotZ = Math.round(parseFloat(match[5]))
+                if (match[6]) {
+                    element.status = parseInt(match[6])
+                }
+                return element
+            }
+            return null
+        }
+
+        getPostElementByNameRegex = name => {
+            // Define a pattern which selects the element features
+            const patt = '"name":\\s*"(' + name + ')",\\s*"typeCode":\\s*([^,\\n]*)(?:,\\s*"voltageCode":\\s*([^,\\n]*))*(?:,\\s*"ring1VoltageCode":\\s*([^,\\n]*))*(?:,\\s*"ring2VoltageCode":\\s*([^,\\n]*))*(?:,\\s*"ring3VoltageCode":\\s*([^,\\n]*))*,\\s*"locX":\\s*([^,\n]*),\\s*"locY":\\s*([^,\n]*),\\s*"rotZ":\\s*([^,\\n]*),\\s*"status":\\s*([^,\\n]*)(?:,\\s*"interlockGuid":\\s*"(.*)")*(?:,\\s*"mode":\\s*([^,\\n]*))*(?:,\\s*"selectorSwitch":\\s*([^,\\n]*))*(?:,\\s*"warningPanel":\\s*([^,\\n]*))*(?:,\\s*"number":\\s*([^,\\n]*))*(?:,\\s*"bypass":\\s*([^,\\n]*))*(?:,\\s*"service":\\s*([^,\\n]*))*(?:,\\s*"recloser":\\s*([^,\\n]*))*'
+            // Define regular expression object by the pattern
+            const re = new RegExp(patt, 'g')
+            // Search post changes for the element
+            const match = re.exec(postRaw)
+            // Check if the element exists
+            if (match) {
+                // Define an empty post object
+                let element = {}
+                // Populate the element
+                if (match[1]) {
+                    element.name = match[1]
+                }
+                element.typeCode = parseInt(match[2])
+                if (match[3]) {
+                    element.voltageCode = parseInt(match[3])
+                }
+                if (match[4]) {
+                    element.ring1VoltageCode = parseInt(match[4])
+                }
+                if (match[5]) {
+                    element.ring2VoltageCode = parseInt(match[5])
+                }
+                if (match[6]) {
+                    element.ring3VoltageCode = parseInt(match[6])
+                }
+                element.locX = parseInt(match[7]) * @Constants.elementsWidth;
+                element.locY = parseInt(match[8]) * @Constants.elementsHeight;
+                element.rotZ = Math.round(parseFloat(match[9]))
+                element.status = parseInt(match[10])
+                if (match[11]) {
+                    element.interlockGuid = match[11]
+                }
+                return element
+            }
+            return null
+        }
+
+        getPostElementByLocationRegex = location => {
+            // Define a pattern which selects the element features
+            const patt = '(?:"name":\\s*"(.*)",\\s*)*"typeCode":\\s*([^,\\n]*)(?:,\\s*"voltageCode":\\s*([^,\\n]*))*(?:,\\s*"ring1VoltageCode":\\s*([^,\\n]*))*(?:,\\s*"ring2VoltageCode":\\s*([^,\\n]*))*(?:,\\s*"ring3VoltageCode":\\s*([^,\\n]*))*,\\s*"locX":\\s*(' + location[0] / @Constants.elementsWidth + '),\\s*"locY":\\s*(' + location[1] / @Constants.elementsHeight + '),\\s*"rotZ":\\s*([^,\\n]*),\\s*"status":\\s*([^,\\n]*)(?:,\\s*"interlockGuid":\\s*"(.*)")*(?:,\\s*"mode":\\s*([^,\\n]*))*(?:,\\s*"selectorSwitch":\\s*([^,\\n]*))*(?:,\\s*"warningPanel":\\s*([^,\\n]*))*(?:,\\s*"number":\\s*([^,\\n]*))*(?:,\\s*"bypass":\\s*([^,\\n]*))*(?:,\\s*"service":\\s*([^,\\n]*))*(?:,\\s*"recloser":\\s*([^,\\n]*))*'
+            // Define regular expression object by the pattern
+            const re = new RegExp(patt, 'g')
+            // Search post changes for the element
+            const match = re.exec(postRaw)
+            // Check if the element exists
+            if (match) {
+                // Define an empty post object
+                let element = {}
+                // Populate the element
+                if (match[1]) {
+                    element.name = match[1]
+                }
+                element.typeCode = parseInt(match[2])
+                if (match[3]) {
+                    element.voltageCode = parseInt(match[3])
+                }
+                if (match[4]) {
+                    element.ring1VoltageCode = parseInt(match[4])
+                }
+                if (match[5]) {
+                    element.ring2VoltageCode = parseInt(match[5])
+                }
+                if (match[6]) {
+                    element.ring3VoltageCode = parseInt(match[6])
+                }
+                element.locX = parseInt(match[7]) * @Constants.elementsWidth;
+                element.locY = parseInt(match[8]) * @Constants.elementsHeight;
+                element.rotZ = Math.round(parseFloat(match[9]))
+                element.status = parseInt(match[10])
+                if (match[11]) {
+                    element.interlockGuid = match[11]
+                }
+                return element
+            }
+            return null
+        }
+
+        getTopElementLocation = location => {
+            // Calculate top location
+            return [location[0], location[1] - @Constants.elementsHeight]
+        }
+
+        getRightElementLocation = location => {
+            // Calculate right location
+            return [location[0] + @Constants.elementsWidth, location[1]]
+        }
+
+        getBottomElementLocation = location => {
+            // Calculate down location
+            return [location[0], location[1] + @Constants.elementsHeight]
+        }
+
+        getLeftElementLocation = location => {
+            // Calculate left location
+            return [location[0] - @Constants.elementsWidth, location[1]]
+        }
+    </script>
+}
+
+@section Modals {
+    <script>
+        function getInterlocksPartial(interlockGuid) {
+            $.get('/Post/GetInterlocks?interlockGuid=' + interlockGuid, function (interlocks) {
+                $('#interlock-modal').css('display', 'flex')
+                $('#interlock-modal-body').append(interlocks)
+            })
+        }
+    </script>
+}
+
+@* <h1 class="title">@Model.Name</h1> *@
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' id='postElements'>
+    <g class="scene">
+        @foreach (var item in Model.PostElements)
+        {
+            switch (item.TypeCode)
+            {
+                case ElementType.LineType1:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 40.000, -0.000 L 60.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 100.000 L 40.000, -0.000 L 40.000, -0.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType2:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 40.000, 100.000 L 40.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 L 40.000, 40.000 L 60.000, 40.000 L 60.000, 60.000 L 60.000, 100.000 L 40.000, 100.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType3:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 40.000, 100.000 L 40.000, 60.000 L 0.000, 60.000 L 0.000, 40.000 L 40.000, 40.000 L 40.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 40.000, 100.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.LineType4:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 100.000, 60.000 L 60.000, 60.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 60.000 L -0.000, 60.000 L -0.000, 40.000 L 40.000, 40.000 L 40.000, -0.000 L 60.000, -0.000 L 60.000, 40.000 L 100.000, 40.000 L 100.000, 60.000 Z" />
+                    </g>
+                    break;
+
+                case ElementType.BridgeLine:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill="transparent" stroke-width="20px" stroke="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 50 0 L 50, 25 C 85 25, 85 75, 50 75 L 50, 100" />
+                    </g>
+                    break;
+
+                case ElementType.EntranceLine:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path transform="rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" onclick="changeStatus(@item.LocX, @item.LocY)" style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])"
+                              d="M 40.000, -0.000 L 60.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 100.000 L 40.000, -0.000 L 40.000, -0.000 Z" />
+                        <text x="102.5px" y="22.5px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.ExitLine:
+                case ElementType.BusLine:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path transform="rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])"
+                              d="M 40.000, -0.000 L 60.000, -0.000 L 60.000, -0.000 L 60.000, 100.000 L 60.000, 100.000 L 40.000, 100.000 L 40.000, 100.000 L 40.000, -0.000 L 40.000, -0.000 Z" />
+                        <text x="102.5px" y="22.5px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.Disconnector:
+                    <g class="hasOptions" id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path onclick="changeStatus(@item.LocX, @item.LocY)" data-interlockGuid="@item.InterlockGuid" data-mode="@item.Mode" data-selectorswitch="@item.SelectorSwitch" data-warningpanel="@item.WarningPanel" data-namratornumber="@item.Number" data-bypass="@item.Bypass" data-service="@item.Service" data-recloser="@item.Recloser"
+                              style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : "transparent")" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.VoltageCode.Value]"
+                              d="M 50.000, 4.000 C 75.405, 4.000 96.000, 24.595 96.000, 50.000 C 96.000, 75.405 75.405, 96.000 50.000, 96.000 C 24.595, 96.000 4.000, 75.405 4.000, 50.000 C 4.000, 24.595 24.595, 4.000 50.000, 4.000 Z" />
+                        <text x="102.5px" y="-15px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.BreakerType1:
+                    <g class="hasOptions" id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path onclick="changeStatus(@item.LocX, @item.LocY)" data-interlockGuid="@item.InterlockGuid" data-mode="@item.Mode" data-selectorswitch="@item.SelectorSwitch" data-warningpanel="@item.WarningPanel" data-namratornumber="@item.Number" data-bypass="@item.Bypass" data-service="@item.Service" data-recloser="@item.Recloser"
+                              style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : "transparent")" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.VoltageCode.Value]"
+                              d="M 4.000, 4.000 L 96.000, 4.000 L 96.000, 4.000 L 96.000, 96.000 L 96.000, 96.000 L 4.000, 96.000 L 4.000, 96.000 L 4.000, 4.000 L 4.000, 4.000 Z" />
+                        <text x="102.5px" y="-20px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.BreakerType2:
+                    <g class="hasOptions" id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path onclick="changeStatus(@item.LocX, @item.LocY)" data-interlockGuid="@item.InterlockGuid" data-mode="@item.Mode" data-selectorswitch="@item.SelectorSwitch" data-warningpanel="@item.WarningPanel" data-namratornumber="@item.Number" data-bypass="@item.Bypass" data-service="@item.Service" data-recloser="@item.Recloser"
+                              style="cursor: pointer;" fill-rule="evenodd" fill="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : "transparent")" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@Constants.voltagesLightColor[item.VoltageCode.Value]"
+                              d="M 17.000, 17.000 L 84.000, 17.000 L 84.000, 17.000 L 84.000, 84.000 L 84.000, 84.000 L 17.000, 84.000 L 17.000, 84.000 L 17.000, 17.000 L 17.000, 17.000 Z" />
+                        <text x="102.5px" y="-5px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.TransType1:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring1VoltageCode.Value] : Constants.voltagesLightColor[item.Ring1VoltageCode.Value])"
+                              d="M 49.800, 4.250 C 66.921, 4.250 80.800, 18.129 80.800, 35.250 C 80.800, 52.371 66.921, 66.250 49.800, 66.250 C 32.679, 66.250 18.800, 52.371 18.800, 35.250 C 18.800, 18.129 32.679, 4.250 49.800, 4.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring2VoltageCode.Value] : Constants.voltagesLightColor[item.Ring2VoltageCode.Value])"
+                              d="M 49.812, 34.250 C 66.933, 34.250 80.812, 48.129 80.812, 65.250 C 80.812, 82.371 66.933, 96.250 49.812, 96.250 C 32.692, 96.250 18.812, 82.371 18.812, 65.250 C 18.812, 48.129 32.692, 34.250 49.812, 34.250 Z" />
+                        <text x="102.5px" y="-10px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.TransType2:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring1VoltageCode.Value] : Constants.voltagesLightColor[item.Ring1VoltageCode.Value])"
+                              d="M 51.312, 4.250 C 67.053, 4.250 79.812, 17.010 79.812, 32.750 C 79.812, 48.490 67.053, 61.250 51.312, 61.250 C 35.572, 61.250 22.812, 48.490 22.812, 32.750 C 22.812, 17.010 35.572, 4.250 51.312, 4.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring2VoltageCode.Value] : Constants.voltagesLightColor[item.Ring2VoltageCode.Value])"
+                              d="M 51.300, 39.250 C 67.040, 39.250 79.800, 52.010 79.800, 67.750 C 79.800, 83.490 67.040, 96.250 51.300, 96.250 C 35.560, 96.250 22.800, 83.490 22.800, 67.750 C 22.800, 52.010 35.560, 39.250 51.300, 39.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring3VoltageCode.Value] : Constants.voltagesLightColor[item.Ring3VoltageCode.Value])"
+                              d="M 33.312, 21.250 C 49.052, 21.250 61.812, 34.010 61.812, 49.750 C 61.812, 65.490 49.052, 78.250 33.312, 78.250 C 17.572, 78.250 4.812, 65.490 4.812, 49.750 C 4.812, 34.010 17.572, 21.250 33.312, 21.250 Z" />
+                        <text x="110px" y="-15px" dominant-baseline="middle" text-anchor="middle" font-size="16pt" font-weight="bold">@item.Name</text>
+                    </g>
+                    break;
+
+                case ElementType.TransPart:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring1VoltageCode.Value] : Constants.voltagesLightColor[item.Ring1VoltageCode.Value])"
+                              d="M 49.800, 4.250 C 66.921, 4.250 80.800, 18.129 80.800, 35.250 C 80.800, 52.371 66.921, 66.250 49.800, 66.250 C 32.679, 66.250 18.800, 52.371 18.800, 35.250 C 18.800, 18.129 32.679, 4.250 49.800, 4.250 Z" />
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[item.Ring2VoltageCode.Value] : Constants.voltagesLightColor[item.Ring2VoltageCode.Value])"
+                              d="M 49.812, 34.250 C 66.933, 34.250 80.812, 48.129 80.812, 65.250 C 80.812, 82.371 66.933, 96.250 49.812, 96.250 C 32.692, 96.250 18.812, 82.371 18.812, 65.250 C 18.812, 48.129 32.692, 34.250 49.812, 34.250 Z" />
+                    </g>
+                    break;
+
+                case ElementType.Generator:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)" onclick="changeStatus(@item.LocX, @item.LocY)" style="cursor: pointer;">
+                        <path fill-rule="evenodd" fill="transparent" stroke-width="8px" stroke-linecap="butt" stroke-linejoin="miter" stroke="@(item.Status ? Constants.voltagesDarkColor[0] : Constants.voltagesLightColor[0])"
+                              d="M 50.000, 4.000 C 75.405, 4.000 96.000, 24.595 96.000, 50.000 C 96.000, 75.405 75.405, 96.000 50.000, 96.000 C 24.595, 96.000 4.000, 75.405 4.000, 50.000 C 4.000, 24.595 24.595, 4.000 50.000, 4.000 Z" />
+                        <text x="50px" y="55px" dominant-baseline="middle" text-anchor="middle" font-size="36pt" font-weight="bold">G</text>
+                    </g>
+                    break;
+
+                case ElementType.Reactor:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY)" fill="transparent" stroke-width="5px" stroke="@(item.Status ? Constants.voltagesDarkColor[item.VoltageCode.Value] : Constants.voltagesLightColor[item.VoltageCode.Value])">
+                        <path d="M 50 0 L 50 25 A 30 30, 0, 1, 1, 20 55 L 50 55 L 50 100" />
+                    </g>
+                    break;
+
+                case ElementType.Earth:
+                    <g id="@item.LocX-@item.LocY" transform="translate(@item.LocX, @item.LocY) rotate(@item.RotZ, @Constants.elementsHalfWidth, @Constants.elementsHalfHeight)" fill-rule="evenodd" fill="#000000">
+                        <path d="M 41.000, 54.000 L 41.000, 98.000 L 33.000, 98.000 L 33.000, 2.000 L 41.000, 2.000 L 41.000, 46.000 L 100.000, 46.000 L 100.000, 54.000 L 41.000, 54.000 Z M 22.000, 15.000 L 30.000, 15.000 L 30.000, 85.000 L 22.000, 85.000 L 22.000, 15.000 Z M 11.000, 25.000 L 19.000, 25.000 L 19.000, 75.000 L 11.000, 75.000 L 11.000, 25.000 Z M -0.000, 37.000 L 8.000, 37.000 L 8.000, 63.000 L -0.000, 63.000 L -0.000, 37.000 Z" />
+                    </g>
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    </g>
+</svg>
+<partial name="_InterlockModal" />

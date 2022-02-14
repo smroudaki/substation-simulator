@@ -1,0 +1,180 @@
+﻿
+@using ElectricalEmulator.Infra.Data.Extensions
+
+<li class="@Html.IsOpen(new string[] { "Dashboard" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Dashboard" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            داشبورد
+            <i class="right fa fa-angle-left"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Dashboard" asp-action="Index" class="@Html.IsActive(new string[] { "Dashboard" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>صفحه اصلی</p>
+            </a>
+        </li>
+    </ul>
+</li>
+<li class="@Html.IsOpen(new string[] { "Post" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Post" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            پست ها
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Post" asp-action="Index" class="@Html.IsActive(new string[] { "Post" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست پست ها</p>
+            </a>
+        </li>
+    </ul>
+</li>
+<li class="@Html.IsOpen(new string[] { "Master" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Master" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            اساتید
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Master" asp-action="Index" class="@Html.IsActive(new string[] { "Master" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست اساتید</p>
+            </a>
+        </li>
+    </ul>
+</li>
+<li class="@Html.IsOpen(new string[] { "Student" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Student" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            دانشجویان
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Student" asp-action="Index" class="@Html.IsActive(new string[] { "Student" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست دانشجویان</p>
+            </a>
+        </li>
+    </ul>
+</li>
+<li class="@Html.IsOpen(new string[] { "Class" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Class" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            کلاس ها
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Class" asp-action="Index" class="@Html.IsActive(new string[] { "Class" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست کلاس ها</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Class" asp-action="Requests" class="@Html.IsActive(new string[] { "Class" }, "Requests")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست درخواست ها</p>
+            </a>
+        </li>
+    </ul>
+</li>
+@*<li class="@Html.IsOpen(new string[] { "Payment" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Payment" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            مالی
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Payment" asp-action="Index" class="@Html.IsActive(new string[] { "Payment" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست تراکنش ها</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Payment" asp-action="Index" class="@Html.IsActive(new string[] { "Payment" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>شارژ حساب دانشجو</p>
+            </a>
+        </li>
+    </ul>
+</li>
+<li class="@Html.IsOpen(new string[] { "Ticket" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Ticket" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            پشتیبانی
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a asp-controller="Ticket" asp-action="Index" class="@Html.IsActive(new string[] { "Ticket" }, "Index")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>لیست تیکت ها</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Ticket" asp-action="" class="@Html.IsActive(new string[] { "Ticket" }, "TEST")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>ارسال تیکت به دانشجو</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Ticket" asp-action="" class="@Html.IsActive(new string[] { "Ticket" }, "TEST")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>ارسال تیکت به استاد</p>
+            </a>
+        </li>
+    </ul>
+</li>*@
+<li class="@Html.IsOpen(new string[] { "Setting" })">
+    <a href="#" class="@Html.IsActive(new string[] { "Setting" })">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>
+            تنظیمات
+            <i class="fa fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a href="javascript:void(0)" onclick="editProfile()" class="@Html.IsActive(new string[] { "Account" }, "EditProfile")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>ویرایش پروفایل</p>
+            </a>
+            <a href="javascript:void(0)" onclick="changePassword()" class="@Html.IsActive(new string[] { "Account" }, "ChangePassword")">
+                <i class="fa fa-circle-o nav-icon"></i>
+                <p>تغییر کلمه عبور</p>
+            </a>
+        </li>
+    </ul>
+</li>
+@*<li class="nav-item">
+    <a href="#" class="nav-link">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>مستندات</p>
+    </a>
+</li>*@
+<li class="nav-item">
+    <form asp-controller="Account" asp-action="Logout" method="post" class="form-nav-link">
+        <i class="nav-icon fa fa-edit"></i>
+        <p>خروج</p>
+        <input type="submit" value="" />
+    </form>
+</li>

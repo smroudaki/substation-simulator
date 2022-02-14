@@ -1,0 +1,37 @@
+﻿@model IEnumerable<ElectricalEmulator.Application.ViewModels.Reports.ReportViewModel>
+
+<div class="container-fluid">
+    <div class="post-reports">
+        <div class="row">
+            <div class="col-12">
+                <table id="datatable" class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>@Html.DisplayNameFor(model => model.User)</th>
+                            <th>@Html.DisplayNameFor(model => model.Value)</th>
+                            <th>@Html.DisplayNameFor(model => model.CreationDate)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var counter = 1;
+
+                            foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>@(counter++)</td>
+                                    <td>@item.User.FullName</td>
+                                    <td>@item.Value</td>
+                                    <td>@item.CreationDate</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="~/dist/js/custom-datatables.js"></script>
